@@ -1,0 +1,3687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BASU Classes — Complete Scheduler</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root{
+  --pri:#4f46e5;--pri-d:#3730a3;--pri-l:#ede9fe;
+  --ok:#059669;--ok-l:#d1fae5;
+  --warn:#d97706;--warn-l:#fef3c7;
+  --err:#dc2626;--err-l:#fee2e2;
+  --bg:#f0f2f5;--card:#ffffff;
+  --border:#e2e8f0;--border-d:#cbd5e1;
+  --text:#0f172a;--muted:#64748b;--subtle:#94a3b8;
+  --sidebar:240px;
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 25px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;display:flex;min-height:100vh}
+
+/* ── SIDEBAR NAV ── */
+.sidebar{
+  width:var(--sidebar);min-width:var(--sidebar);
+  background:linear-gradient(180deg,#1e1b4b 0%,#312e81 100%);
+  color:#fff;
+  position:fixed;top:0;left:0;bottom:0;
+  display:flex;flex-direction:column;
+  z-index:300;
+  box-shadow:4px 0 20px rgba(0,0,0,.2);
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.sidebar-logo{
+  padding:20px 16px 16px;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+.sidebar-logo h1{
+  font-size:1.1rem;font-weight:800;
+  background:linear-gradient(135deg,#a5b4fc,#e0e7ff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  letter-spacing:-.3px;
+}
+.sidebar-logo p{font-size:.68rem;color:rgba(255,255,255,.45);margin-top:2px}
+
+.sidebar-sync{
+  margin:10px 12px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;padding:8px 10px;
+}
+.sidebar-sync .sync-label{font-size:.62rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+#sync-status{font-size:.68rem;color:rgba(255,255,255,.6);display:block;margin-bottom:6px}
+.sync-btns{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.sync-btn{padding:4px 6px;border:none;border-radius:5px;font-size:.62rem;cursor:pointer;font-weight:600;text-align:center}
+.sync-btn-save{background:rgba(16,185,129,.2);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+.sync-btn-load{background:rgba(99,102,241,.2);color:#a5b4fc;border:1px solid rgba(99,102,241,.3)}
+.sync-btn-live{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.25);grid-column:span 2}
+.sync-btn:hover{filter:brightness(1.2)}
+
+.nav-section{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;padding:12px 16px 4px}
+
+.nav{display:flex;flex-direction:column;gap:1px;padding:0 8px;flex-shrink:0}
+.nav button{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 10px;border-radius:8px;
+  cursor:pointer;font-size:.78rem;font-weight:500;
+  color:rgba(255,255,255,.55);
+  border:none;background:transparent;text-align:left;
+  transition:all .15s;width:100%;
+}
+.nav button:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.85)}
+.nav button.on{background:rgba(255,255,255,.15);color:#fff;font-weight:600}
+.nav button.on::before{content:'';position:absolute;left:0;width:3px;height:28px;background:#a5b4fc;border-radius:0 3px 3px 0}
+.nav button{position:relative}
+.nav-icon{width:18px;text-align:center;font-size:.85rem}
+
+/* ── MAIN CONTENT ── */
+.main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* TOPBAR (slim) */
+.topbar{
+  background:rgba(255,255,255,.95);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;
+  height:52px;
+  display:flex;align-items:center;gap:10px;
+  position:sticky;top:0;z-index:200;
+}
+.topbar-title{font-size:.88rem;font-weight:700;color:var(--pri-d);flex:1}
+.topbar-actions{display:flex;gap:6px;align-items:center}
+
+/* COPY BAR */
+.copy-bar{position:sticky;top:52px;z-index:150;background:#1e40af;color:#fff;padding:8px 20px;display:none;align-items:center;gap:10px;font-size:.78rem;border-bottom:2px solid #1d4ed8}
+.copy-bar.show{display:flex}
+.copy-bar .cb-cancel{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.72rem}
+
+/* PAGE */
+.page{display:none;padding:20px;max-width:1400px;width:100%}.page.on{display:block}
+
+/* CARDS */
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  border:1px solid var(--border);
+  margin-bottom:16px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.card-hdr{
+  padding:13px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:#fafbff;
+}
+.card-hdr h2{font-size:.88rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px}
+.card-body{padding:16px 18px}
+
+/* BUTTONS */
+.btn{
+  padding:7px 14px;border-radius:8px;border:none;cursor:pointer;
+  font-size:.76rem;font-weight:600;
+  display:inline-flex;align-items:center;gap:5px;
+  transition:all .15s;white-space:nowrap;
+  letter-spacing:.01em;
+}
+.btn:active{transform:scale(.97)}
+.btn-pri{background:var(--pri);color:#fff;box-shadow:0 1px 2px rgba(79,70,229,.3)}
+.btn-pri:hover{background:var(--pri-d);box-shadow:0 2px 6px rgba(79,70,229,.4)}
+.btn-ok{background:var(--ok);color:#fff;box-shadow:0 1px 2px rgba(5,150,105,.3)}
+.btn-ok:hover{background:#047857}
+.btn-err{background:var(--err);color:#fff}
+.btn-err:hover{background:#b91c1c}
+.btn-warn{background:var(--warn);color:#fff}
+.btn-warn:hover{background:#b45309}
+.btn-sec{background:var(--border);color:var(--text)}
+.btn-sec:hover{background:var(--border-d)}
+.btn-outline{background:transparent;border:1.5px solid var(--pri);color:var(--pri)}
+.btn-outline:hover{background:var(--pri-l)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg);color:var(--text)}
+.btn-sm{padding:4px 10px;font-size:.7rem;border-radius:6px}
+.btn-xs{padding:2px 7px;font-size:.65rem;border-radius:5px}
+.btn-icon{padding:6px;border-radius:7px;background:transparent;border:1px solid var(--border);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.btn-icon:hover{background:var(--bg)}
+
+/* FORM ELEMENTS */
+label.lbl{font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+input,select,textarea{
+  width:100%;padding:8px 11px;
+  border:1.5px solid var(--border);
+  border-radius:8px;font-size:.82rem;
+  background:#fff;color:var(--text);
+  transition:border-color .15s,box-shadow .15s;
+  font-family:inherit;
+}
+input:focus,select:focus{
+  outline:none;border-color:var(--pri);
+  box-shadow:0 0 0 3px rgba(79,70,229,.12);
+}
+input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.fg{display:flex;flex-direction:column;gap:10px}
+
+/* TIMETABLE */
+.tt{border-collapse:collapse;width:100%;min-width:700px;font-size:.73rem}
+.tt th{
+  background:linear-gradient(135deg,var(--pri),var(--pri-d));
+  color:#fff;padding:8px 6px;
+  border:1px solid rgba(255,255,255,.1);
+  text-align:center;white-space:nowrap;font-size:.7rem;font-weight:600;
+}
+.tt th.batch-col{background:linear-gradient(135deg,#1e1b4b,#312e81);min-width:90px}
+.tt td{border:1px solid #eef0f6;padding:3px;vertical-align:top;min-width:95px}
+.tt td.lbl-col{
+  background:linear-gradient(135deg,#f0f0f8,#e8e8f4);
+  font-weight:700;font-size:.75rem;color:var(--pri-d);
+  text-align:center;vertical-align:middle;white-space:nowrap;
+  border-right:2px solid #d4d4f0;
+}
+.tt td.sat{background:#fffbf0}.tt td.sun{background:#f8f5ff;text-align:center;color:var(--subtle);font-style:italic;font-size:.7rem;vertical-align:middle}
+.tt td.drop-target{background:#eff6ff;outline:2px dashed var(--pri)}
+
+/* SLOTS */
+.slot{
+  border-radius:6px;padding:4px 6px;margin-bottom:2px;
+  font-size:.7rem;cursor:pointer;display:block;
+  position:relative;line-height:1.3;
+  transition:transform .1s,box-shadow .1s;
+  border-left:3px solid rgba(0,0,0,.15);
+}
+.slot:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.12)}
+.slot .sn{font-weight:700;font-size:.71rem}
+.slot .st{font-size:.61rem;opacity:.75}
+.slot .sr{font-size:.61rem;opacity:.65}
+.slot .del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.25);border:none;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;cursor:pointer;display:none;align-items:center;justify-content:center}
+.slot:hover .del,.slot:hover .cpbtn{display:flex}
+.slot .cpbtn{position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,.2);border:none;color:#fff;border-radius:3px;width:14px;height:14px;font-size:8px;cursor:pointer;display:none;align-items:center;justify-content:center}
+.slot[draggable=true]{cursor:grab}
+
+.add-btn{
+  width:100%;background:transparent;
+  border:1.5px dashed #d4d4e0;
+  border-radius:6px;padding:4px;
+  font-size:.63rem;color:var(--subtle);
+  cursor:pointer;text-align:center;margin-top:2px;
+  transition:all .15s;
+}
+.add-btn:hover{border-color:var(--pri);color:var(--pri);background:#f5f3ff}
+.paste-btn{
+  width:100%;background:#dbeafe;
+  border:1.5px dashed #3b82f6;
+  border-radius:6px;padding:4px;
+  font-size:.63rem;color:#1d4ed8;
+  cursor:pointer;text-align:center;margin-top:2px;
+  display:none;font-weight:600;
+}
+
+/* SUBJECT COLORS */
+.cM{background:#EEF2FF;color:#3730a3;border-left-color:#4f46e5}
+.cSc{background:#ECFDF5;color:#065f46;border-left-color:#059669}
+.cP{background:#FFF1F2;color:#881337;border-left-color:#e11d48}
+.cC{background:#FDF2F8;color:#701a75;border-left-color:#a21caf}
+.cB{background:#F0FDF4;color:#14532d;border-left-color:#16a34a}
+.cE{background:#EFF6FF;color:#1e3a8a;border-left-color:#2563eb}
+.cSS{background:#FFFBEB;color:#78350f;border-left-color:#d97706}
+.cAc{background:#F0F9FF;color:#0c4a6e;border-left-color:#0284c7}
+.cEc{background:#F8FAFC;color:#334155;border-left-color:#64748b}
+.cBst{background:#FFF7ED;color:#7c2d12;border-left-color:#ea580c}
+.cPC{background:#FFF1F2;color:#881337;border-left-color:#e11d48}
+.cTe{background:#FEF2F2;color:#7f1d1d;border-left-color:#dc2626;font-weight:700}
+.cDef{background:#F8FAFC;color:#475569;border-left-color:#94a3b8}
+
+/* FILTER TABS */
+.ftabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.ftab{
+  padding:5px 14px;border-radius:20px;font-size:.74rem;font-weight:500;
+  border:1.5px solid var(--border);background:#fff;
+  cursor:pointer;color:var(--muted);transition:all .15s;
+}
+.ftab:hover{border-color:var(--pri);color:var(--pri)}
+.ftab.on{background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 2px 8px rgba(79,70,229,.25)}
+
+/* STAT BOXES */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat-box{
+  background:var(--card);border-radius:var(--radius);
+  padding:16px;border:1px solid var(--border);
+  box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+}
+.stat-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--pri),var(--pri-d))}
+.stat-val{font-size:2rem;font-weight:800;color:var(--pri);line-height:1;margin:8px 0 4px}
+.stat-lbl{font-size:.7rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.stat-sub{font-size:.68rem;color:var(--subtle);margin-top:2px}
+
+/* ALERTS */
+.alert{padding:10px 13px;border-radius:9px;font-size:.78rem;margin-bottom:8px;display:flex;gap:8px;align-items:flex-start;border-left:3px solid}
+.a-ok{background:#f0fdf4;border-left-color:var(--ok);color:#166534}
+.a-warn{background:#fffbeb;border-left-color:var(--warn);color:#92400e}
+.a-err{background:#fef2f2;border-left-color:var(--err);color:#991b1b}
+.a-info{background:#eff6ff;border-left-color:#3b82f6;color:#1e40af}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.modal{
+  background:#fff;border-radius:16px;padding:22px;
+  width:100%;max-width:500px;max-height:90vh;overflow-y:auto;
+  box-shadow:0 25px 60px rgba(0,0,0,.25);
+  border:1px solid rgba(255,255,255,.2);
+}
+.modal-hdr{font-size:.95rem;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;color:var(--text)}
+.modal-close{background:var(--bg);border:none;font-size:1rem;cursor:pointer;color:var(--muted);width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--border);color:var(--text)}
+.modal-foot{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:14px}
+
+/* SECTION LABELS */
+.sec-lbl{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 7px;display:flex;align-items:center;gap:6px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:.65rem;font-weight:600;gap:3px}
+.badge-ok{background:var(--ok-l);color:#065f46}
+.badge-err{background:var(--err-l);color:#991b1b}
+.badge-warn{background:var(--warn-l);color:#92400e}
+.badge-pri{background:var(--pri-l);color:var(--pri-d)}
+
+/* DAY BUTTONS */
+.day-btn{
+  padding:5px 12px;border-radius:8px;
+  border:1.5px solid var(--border);
+  background:#fff;color:var(--muted);
+  cursor:pointer;font-size:.74rem;font-weight:500;
+  transition:all .15s;
+}
+.day-btn:hover{border-color:var(--pri);color:var(--pri);background:var(--pri-l)}
+.day-btn.on{background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 2px 6px rgba(79,70,229,.3)}
+
+/* VTABS */
+.vtabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px}
+.vtab{
+  padding:8px 16px;cursor:pointer;font-size:.78rem;font-weight:500;
+  color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;
+  transition:all .15s;
+}
+.vtab:hover{color:var(--text)}
+.vtab.on{color:var(--pri);border-bottom-color:var(--pri);font-weight:600}
+.vpanel{display:none}.vpanel.on{display:block}
+
+/* TABLES */
+.tbl{width:100%;border-collapse:collapse;font-size:.78rem}
+.tbl th{background:#f8fafc;padding:9px 12px;border-bottom:2px solid var(--border);text-align:left;font-weight:600;color:var(--muted);white-space:nowrap;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+.tbl td{padding:9px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.tbl tbody tr:hover td{background:#fafbff}
+.tbl tbody tr:last-child td{border-bottom:none}
+
+/* FREE SLOT TABLE */
+.fst{border-collapse:collapse;width:100%;font-size:.72rem}
+.fst th{background:#f8fafc;padding:7px 9px;border:1px solid var(--border);font-weight:600;color:var(--muted);text-align:center;white-space:nowrap}
+.fst td{border:1px solid var(--border);padding:4px 6px;vertical-align:top;min-width:70px;text-align:center}
+.free-cell{background:#f0fdf4;color:var(--ok);font-weight:700;font-size:.68rem}
+.busy-cell{font-size:.63rem;line-height:1.3}
+
+/* ROOM CARDS */
+.room-card{
+  background:#fff;border:2px dashed var(--border);
+  border-radius:var(--radius);padding:10px;
+  min-height:80px;transition:all .15s;
+}
+.room-card.drag-over{border-color:var(--pri);background:#f5f3ff;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.room-card.full{border-color:var(--warn);background:#fffbeb}
+
+/* ROUTE CARDS */
+.route-card{
+  background:#fff;border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;margin-bottom:12px;
+  box-shadow:var(--shadow);
+}
+
+/* SWITCH TOGGLE */
+.switch{position:relative;display:inline-flex;align-items:center;cursor:pointer;gap:8px}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch-track{width:36px;height:20px;background:#d1d5db;border-radius:20px;transition:background .2s;flex-shrink:0}
+.switch input:checked+.switch-track{background:var(--ok)}
+.switch-thumb{position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.switch input:checked~.switch-thumb{left:18px}
+.switch-label{font-size:.78rem;font-weight:500;color:var(--text)}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:14px 0}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-d);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+/* PRINT */
+@media print{
+  .sidebar,.copy-bar,.btn,.add-btn,.del,.cpbtn,.no-print{display:none!important}
+  .main{margin-left:0}
+  .page{display:block!important;padding:8px}
+  .card{box-shadow:none;border:1px solid #ccc}
+  .slot{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:transform .3s}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .g3,.g4{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>BASU Classes</h1>
+    <p>Schedule Management System</p>
+  </div>
+
+  <div class="sidebar-sync">
+    <div class="sync-label">☁️ Cloud Sync</div>
+    <span id="sync-status">Ready</span>
+    <div class="sync-btns">
+      <button class="sync-btn sync-btn-save" onclick="saveToFirebase()">↑ Save</button>
+      <button class="sync-btn sync-btn-load" onclick="loadFromFirebase()">↓ Load</button>
+      <button class="sync-btn sync-btn-live" onclick="startLiveSync()">🔄 Live Sync</button>
+    </div>
+  </div>
+
+  <div class="nav-section">Main</div>
+  <div class="nav">
+    <button class="on" onclick="goPage('dashboard',this)"><span class="nav-icon">🏠</span>Dashboard</button>
+    <button onclick="goPage('builder',this)"><span class="nav-icon">📝</span>Schedule Builder</button>
+    <button onclick="goPage('timetable',this)"><span class="nav-icon">📅</span>Timetable</button>
+  </div>
+
+  <div class="nav-section">Management</div>
+  <div class="nav">
+    <button onclick="goPage('rooms',this)"><span class="nav-icon">🚪</span>Rooms</button>
+    <button onclick="goPage('free',this)"><span class="nav-icon">🟢</span>Availability</button>
+    <button onclick="goPage('conflicts',this)"><span class="nav-icon">⚠️</span>Conflicts</button>
+    <button onclick="goPage('transport',this)"><span class="nav-icon">🚌</span>Transport</button>
+  </div>
+
+  <div class="nav-section">Config</div>
+  <div class="nav">
+    <button onclick="goPage('teachers',this)"><span class="nav-icon">👩‍🏫</span>Teachers</button>
+    <button onclick="goPage('settings',this)"><span class="nav-icon">⚙️</span>Settings</button>
+  </div>
+</div>
+
+<!-- MAIN WRAPPER -->
+<div class="main">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title" id="page-title">Dashboard</div>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost btn-sm" onclick="exportData()">💾 Backup</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-file').click()">📂 Restore</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"/>
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+    <button class="btn btn-warn btn-sm" onclick="document.getElementById('pdf-import-file').click()">📄 PDF Import</button>
+    <input type="file" id="pdf-import-file" accept=".pdf" style="display:none" onchange="importFromPDF(event)"/>
+  </div>
+</div>
+
+<!-- COPY BAR -->
+<div class="copy-bar" id="copy-bar">
+  <span style="flex:1">📋 Copy mode — click 📋 in any cell to paste: <strong id="copy-label"></strong></span>
+  <button class="cb-cancel" onclick="cancelCopy()">✕ Cancel</button>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div id="page-dashboard" class="page on">
+  <div class="stat-grid" id="stat-grid"></div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr"><h2>🚀 Quick Actions</h2></div>
+      <div class="card-body">
+        <div class="sec-lbl">Navigate</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <button class="btn btn-pri" onclick="goPage('builder')">📝 Schedule Builder</button>
+          <button class="btn btn-pri" onclick="goPage('timetable')">📅 View Timetable</button>
+          <button class="btn btn-warn" onclick="goPage('conflicts');runConflicts()">⚠️ Check Conflicts</button>
+          <button class="btn btn-ok" onclick="goPage('free')">🟢 Availability</button>
+        </div>
+        <div class="sec-lbl">Export PDF</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <button class="btn btn-outline btn-sm" onclick="openPDFModal('timetable')">📅 Timetable PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="openPDFModal('transport')">🚌 Transport PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="openPDFModal('teacher')">👩‍🏫 Teacher PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="openPDFModal('room')">🚪 Room PDF</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h2>📋 Rules</h2></div>
+      <div class="card-body" style="font-size:.78rem;line-height:1.9;color:var(--muted)">
+        ✅ Maths + Science → same day (7th–10th)<br>
+        ✅ English + SST → same day (7th–10th)<br>
+        ✅ Saturday → Test day only<br>
+        ✅ Core batch → Edge batch (staggered)<br>
+        ✅ 11th → 12th back-to-back (same teacher)<br>
+        ✅ Maths shared: PCM + Commerce<br>
+        ✅ Physics/Chemistry: PCM + PCB merged<br>
+        ✅ Sunday → OFF (CBSE) / Classes (NXT-AIR)<br>
+        🟣 NXT-AIR: 9th-12th JEE/NEET — Room A-D
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCHEDULE BUILDER ═══ -->
+<div id="page-builder" class="page">
+  <div class="card">
+    <div class="card-hdr"><h2>📝 Schedule Builder — Add Multiple Slots at Once</h2></div>
+    <div class="card-body">
+      <div class="g3" style="margin-bottom:12px">
+        <div><label class="lbl">Batch</label>
+          <select id="b-batch"></select></div>
+        <div><label class="lbl">Subject</label>
+          <select id="b-subj">
+              <option>Maths</option>
+              <option>Science</option>
+              <option>Physics</option>
+              <option>Chemistry</option>
+              <option>Biology</option>
+              <option>Physics / Chemistry</option>
+              <option>English</option>
+              <option>SST</option>
+              <option>Hindi</option>
+              <option>Sanskrit</option>
+              <option>Computer</option>
+              <option>Accounts</option>
+              <option>Economics</option>
+              <option>BST</option>
+              <option>Maths (shared)</option>
+              <option>Physics (shared)</option>
+              <option>Chemistry (shared)</option>
+              <option>TEST</option>
+          </select></div>
+        <div><label class="lbl">Teacher</label>
+          <select id="b-teacher"><option value="">— auto-detect —</option></select></div>
+      </div>
+      <div class="g3" style="margin-bottom:12px">
+        <div><label class="lbl">Start Time</label><input type="time" id="b-start" value="16:30"/></div>
+        <div><label class="lbl">End Time</label><input type="time" id="b-end" value="17:45"/></div>
+        <div><label class="lbl">Room (optional)</label><input id="b-room" placeholder="e.g. Room 1"/></div>
+      </div>
+      <div><label class="lbl">Merge with batch (optional — same room same time)</label>
+        <select id="b-merge"><option value="">— no merge —</option></select></div>
+      <div style="margin:12px 0 6px"><label class="lbl">Select Days to Add This Slot</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px" id="builder-days"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-ok" onclick="builderAdd()">✅ Add to Selected Days</button>
+        <button class="btn btn-sec" onclick="builderClear()">Clear</button>
+        <span id="builder-status" style="font-size:.78rem;color:var(--muted);align-self:center"></span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><h2>📋 Recent Additions (today's session)</h2></div>
+    <div class="card-body"><div id="builder-log" style="font-size:.75rem;color:var(--muted)">No entries yet.</div></div>
+  </div>
+</div>
+
+<!-- ═══ TIMETABLE ═══ -->
+<div id="page-timetable" class="page">
+  <div class="card">
+    <div class="card-hdr">
+      <h2>📅 Weekly Timetable</h2>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ok btn-sm" onclick="saveToFirebase()">☁️ Save to Cloud</button>
+        <button class="btn btn-sec btn-sm" onclick="window.print()">🖨 Print</button>
+        <button class="btn btn-sec btn-sm" onclick="exportData()">💾 Backup JSON</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="vtabs">
+        <button class="vtab on" onclick="setTTView('batch',this)">By Batch</button>
+        <button class="vtab" onclick="setTTView('teacher',this)">By Teacher</button>
+        <button class="vtab" onclick="setTTView('room',this)">By Room</button>
+      </div>
+      <!-- Batch view -->
+      <div id="vp-batch" class="vpanel on">
+        <div class="ftabs" id="batch-filter"></div>
+        <div style="overflow-x:auto"><table class="tt" id="tt-batch"></table></div>
+      </div>
+      <!-- Teacher view -->
+      <div id="vp-teacher" class="vpanel">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+          <label class="lbl" style="margin:0;white-space:nowrap">Teacher:</label>
+          <select id="tt-teacher-sel" onchange="renderTeacherView()" style="width:220px"></select>
+        </div>
+        <div style="overflow-x:auto" id="tt-teacher-view"></div>
+      </div>
+      <!-- Room view -->
+      <div id="vp-room" class="vpanel">
+        <div style="overflow-x:auto" id="tt-room-view"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ROOMS PAGE ═══ -->
+<div id="page-rooms" class="page">
+  <div class="card">
+    <div class="card-hdr">
+      <h2>🚪 Room Planner — Drag slots to assign rooms</h2>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="rp-day" onchange="renderRoomPlanner()" style="padding:5px 9px;border:1px solid var(--border);border-radius:7px;font-size:.78rem">
+          <option>Mon</option><option>Tue</option><option>Wed</option><option>Thu</option><option>Fri</option><option>Sat</option><option>Sun</option>
+        </select>
+        <select id="rp-wing" onchange="renderRoomPlanner()" style="padding:5px 9px;border:1px solid var(--border);border-radius:7px;font-size:.78rem">
+          <option value="all">All Batches</option>
+          <option value="cbse">CBSE Centre</option>
+          <option value="nxtair">NXT-AIR Centre</option>
+          <option value="senior">CBSE Senior (11–12)</option>
+          <option value="junior">CBSE Junior (7–10)</option>
+        </select>
+        <button class="btn btn-ok btn-sm" onclick="autoAssignRooms()">⚡ Auto-Assign</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="g2" style="margin-bottom:12px">
+        <div>
+          <div class="sec-lbl">📚 Unassigned / Drag from here</div>
+          <div id="rp-unassigned" style="min-height:80px;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:10px;padding:8px"
+            ondragover="event.preventDefault();this.style.borderColor='#6366f1'"
+            ondragleave="this.style.borderColor='#cbd5e1'"
+            ondrop="rpDropUnassign(event)"></div>
+        </div>
+        <div>
+          <div class="sec-lbl">⚠️ Room Shortage List</div>
+          <div id="rp-shortage" style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:8px;min-height:60px;font-size:.75rem"></div>
+        </div>
+      </div>
+      <div class="sec-lbl">🚪 Rooms (drag slots here, max 4 per room)</div>
+      <div id="rp-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><h2>⚙️ Manage Rooms</h2><button class="btn btn-pri btn-sm" onclick="openRoomForm(-1)">+ Add Room</button></div>
+    <div class="card-body"><div id="room-mgmt"></div></div>
+  </div>
+
+</div>
+
+<!-- ═══ FREE SLOTS ═══ -->
+<div id="page-free" class="page">
+  <div class="card">
+    <div class="card-hdr">
+      <h2>🟢 Availability Dashboard</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="free-mode" onchange="renderFreeSlots()" style="padding:5px 9px;border:1px solid var(--border);border-radius:7px;font-size:.78rem">
+          <option value="day">Single Day View</option>
+          <option value="weekly">Weekly Overview</option>
+        </select>
+        <select id="free-centre" onchange="initFreeSlots();renderFreeSlots()" style="padding:5px 9px;border:1px solid var(--border);border-radius:7px;font-size:.78rem">
+          <option value="cbse">CBSE Centre</option>
+          <option value="nxtair">NXT-AIR Centre</option>
+          <option value="all">Both Centres</option>
+        </select>
+        <div style="display:flex;gap:3px" id="free-day-btns"></div>
+        <button class="btn btn-pri btn-sm" onclick="openPDFModal('teacher')">📄 Teacher PDF</button>
+        <button class="btn btn-pri btn-sm" onclick="openPDFModal('room')">📄 Room PDF</button>
+      </div>
+    </div>
+    <div class="card-body" id="free-output" style="padding:0"></div>
+  </div>
+</div>
+
+<!-- ═══ CONFLICTS ═══ -->
+<div id="page-conflicts" class="page">
+  <div class="card">
+    <div class="card-hdr"><h2>⚠️ Conflict Checker</h2>
+      <button class="btn btn-warn" onclick="runConflicts()">▶ Run Check</button></div>
+    <div class="card-body" id="conflict-output">
+      <div class="alert a-info">ℹ️ Click "Run Check" to detect conflicts.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TRANSPORT ═══ -->
+<div id="page-transport" class="page">
+  <div class="card">
+    <div class="card-hdr">
+      <h2>🚌 Transport Planner</h2>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <input id="tr-search" placeholder="🔍 Search student..." oninput="renderRoutes()"
+          style="width:190px;padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.78rem"/>
+        <button class="btn btn-ok btn-sm" onclick="document.getElementById('csv-upload').click()">📥 Bulk CSV</button>
+        <input type="file" id="csv-upload" accept=".csv,.tsv,.txt" style="display:none" onchange="bulkUploadStudents(event)"/>
+        <button class="btn btn-ghost btn-sm" onclick="downloadCSVTemplate()">📄 Template</button>
+        <button class="btn btn-pri btn-sm" onclick="openDriverForm(-1)">+ Route</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="g2" style="margin-bottom:12px">
+        <div>
+          <div class="sec-lbl">Routes & Drivers</div>
+          <div id="route-list"></div>
+        </div>
+        <div>
+          <div class="sec-lbl">Student → Route Assignment</div>
+          <div class="fg">
+            <div><label class="lbl">Student Name</label><input id="tr-student" placeholder="Student name"/></div>
+            <div><label class="lbl">Centre</label>
+              <select id="tr-centre" onchange="updateBatchesByCentre()" style="width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:7px;font-size:.82rem">
+                <option value="cbse">BASU CBSE Centre</option>
+                <option value="nxtair">NXT-AIR BASU Centre</option>
+              </select>
+            </div>
+            <div><label class="lbl">Class / Batch</label><select id="tr-batch" onchange="updateStudentSubjects()"></select></div>
+            <div><label class="lbl">Subjects Enrolled (select all that apply)</label>
+              <div id="tr-subjects" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;padding:8px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;min-height:36px"></div>
+            </div>
+            <div><label class="lbl">Route</label><select id="tr-route"><option value="">— select —</option></select></div>
+            <div><label class="lbl">Pickup Point</label><input id="tr-pickup" placeholder="e.g. Main Chowk"/></div>
+            <div class="g2">
+              <div><label class="lbl">Parent 1 Phone</label><input id="tr-phone1" placeholder="98XXXXXXXX" type="tel"/></div>
+              <div><label class="lbl">Parent 2 Phone</label><input id="tr-phone2" placeholder="98XXXXXXXX" type="tel"/></div>
+            </div>
+            <button class="btn btn-ok btn-sm" onclick="addStudent()">Add Student</button>
+          </div>
+        </div>
+      </div>
+      <div class="sec-lbl">Driver Schedule — Daily Pickup/Drop List</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center">
+        <label class="lbl" style="margin:0">Day:</label>
+        <select id="tr-day" onchange="renderDriverSchedule()" style="width:120px;padding:5px 8px;border:1px solid var(--border);border-radius:7px;font-size:.78rem">
+          <option>Mon</option><option>Tue</option><option>Wed</option><option>Thu</option><option>Fri</option><option>Sat</option><option>Sun</option>
+        </select>
+      </div>
+      <div id="driver-schedule"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TEACHERS PAGE ═══ -->
+<div id="page-teachers" class="page">
+  <div class="card">
+    <div class="card-hdr"><h2>👩‍🏫 Teachers</h2><button class="btn btn-pri btn-sm" onclick="openTeacherForm(-1)">+ Add</button></div>
+    <div class="card-body"><div id="teacher-list-table"></div></div>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div id="page-settings" class="page">
+  <div class="card">
+    <div class="card-hdr">
+      <h2>📚 Batch Configuration</h2>
+    </div>
+    <div class="card-body">
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Edit batch subjects and student strength. Strength is used for room assignment (room capacity check).</p>
+      <div id="batch-config"></div>
+      <button class="btn btn-pri" style="margin-top:10px" onclick="saveBatchConfig()">Save Batch Config</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><h2>⚙️ Required Sessions / Week</h2></div>
+    <div class="card-body">
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Validator checks these counts — missing sessions shown in Conflicts.</p>
+      <div id="sess-config"></div>
+      <button class="btn btn-pri" style="margin-top:10px" onclick="saveSessConfig()">Save</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><h2>🗑 Danger Zone</h2></div>
+    <div class="card-body" style="display:flex;gap:8px">
+      <button class="btn btn-err" onclick="if(confirm('Clear all slots?')){slots={};renderAll()}">Clear All Slots</button>
+      <button class="btn btn-err" onclick="if(confirm('Reset everything?')){initData();loadPDFSchedule();loadNXTAIRSchedule();renderAll()}">Reset to Default</button>
+      <button class="btn btn-err" onclick="if(confirm('Reset to default schedule?')){initData();loadPDFSchedule();loadNXTAIRSchedule();renderAll();alert('Reset done!')}">🗑 Clear Browser Data</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- PDF OPTIONS MODAL -->
+<div id="pdf-modal" class="modal-bg" style="display:none" onclick="if(event.target===this)document.getElementById('pdf-modal').style.display='none'">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr"><span id="pdf-modal-title">📄 Download PDF</span>
+      <button class="modal-close" onclick="document.getElementById('pdf-modal').style.display='none'">×</button>
+    </div>
+    <div class="fg">
+      <div>
+        <label class="lbl">Time Range</label>
+        <div style="display:flex;gap:6px">
+          <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer">
+            <input type="radio" name="pdf-range" value="weekly" checked> Weekly (All days)
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer">
+            <input type="radio" name="pdf-range" value="day"> Specific Day
+          </label>
+        </div>
+      </div>
+      <div id="pdf-day-sel" style="display:none">
+        <label class="lbl">Select Day</label>
+        <select id="pdf-day" style="width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:7px;font-size:.82rem">
+          <option>Mon</option><option>Tue</option><option>Wed</option>
+          <option>Thu</option><option>Fri</option><option>Sat</option><option>Sun</option>
+        </select>
+      </div>
+      <div id="pdf-transport-opts" style="display:none">
+        <label class="lbl">Transport View</label>
+        <select id="pdf-transport-type" style="width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:7px;font-size:.82rem">
+          <option value="day">Day-wise (who comes on which day)</option>
+          <option value="route">Route-wise student list</option>
+          <option value="weekly">Weekly schedule per student</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-sec" onclick="document.getElementById('pdf-modal').style.display='none'">Cancel</button>
+      <button class="btn btn-ok" onclick="executePDF()">📄 Download PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- SLOT MODAL -->
+<div id="slot-modal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeSlotModal()">
+  <div class="modal">
+    <div class="modal-hdr"><span id="slot-modal-title">Add Slot</span><button class="modal-close" onclick="closeSlotModal()">×</button></div>
+    <div class="g2">
+      <div><label class="lbl">Subject</label><select id="sm-subj" onchange="smAutoTeacher()">
+              <option>Maths</option>
+              <option>Science</option>
+              <option>Physics</option>
+              <option>Chemistry</option>
+              <option>Biology</option>
+              <option>Physics / Chemistry</option>
+              <option>English</option>
+              <option>SST</option>
+              <option>Hindi</option>
+              <option>Sanskrit</option>
+              <option>Computer</option>
+              <option>Accounts</option>
+              <option>Economics</option>
+              <option>BST</option>
+              <option>Maths (shared)</option>
+              <option>Physics (shared)</option>
+              <option>Chemistry (shared)</option>
+              <option>TEST</option>
+      </select></div>
+      <div><label class="lbl">Teacher</label><select id="sm-teacher"></select></div>
+      <div><label class="lbl">Start</label><input type="time" id="sm-start" value="16:30"/></div>
+      <div><label class="lbl">End</label><input type="time" id="sm-end" value="17:45"/></div>
+      <div><label class="lbl">Room</label><input id="sm-room" placeholder="Room 1"/></div>
+      <div><label class="lbl">Merged with</label><select id="sm-merge"><option value="">— none —</option></select></div>
+    </div>
+    <div style="margin-top:8px"><label class="lbl">Notes</label><input id="sm-notes" placeholder="Optional"/></div>
+    <div class="modal-foot">
+      <button class="btn btn-sec" onclick="closeSlotModal()">Cancel</button>
+      <button class="btn btn-ok" onclick="saveSlotModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEACHER MODAL -->
+<div id="teacher-modal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeTeacherModal()">
+  <div class="modal">
+    <div class="modal-hdr"><span id="tm-title">Add Teacher</span><button class="modal-close" onclick="closeTeacherModal()">×</button></div>
+    <div class="g2">
+      <div><label class="lbl">Name</label><input id="tm-name"/></div>
+      <div><label class="lbl">Subjects (comma)</label><input id="tm-subj" placeholder="Maths, Science"/></div>
+      <div><label class="lbl">Max classes/day</label><input type="number" id="tm-max" value="4"/></div>
+      <div><label class="lbl">Notes</label><input id="tm-notes"/></div>
+    </div>
+    <div style="margin-top:8px"><label class="lbl">Available Days</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px" id="tm-days"></div></div>
+    <div class="modal-foot">
+      <button class="btn btn-err btn-sm" id="tm-del" onclick="deleteTeacher()" style="margin-right:auto">Delete</button>
+      <button class="btn btn-sec" onclick="closeTeacherModal()">Cancel</button>
+      <button class="btn btn-ok" onclick="saveTeacherModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROOM MODAL -->
+<div id="room-modal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeRoomModal()">
+  <div class="modal">
+    <div class="modal-hdr"><span id="rm-title">Add Room</span><button class="modal-close" onclick="closeRoomModal()">×</button></div>
+    <div class="g3">
+      <div><label class="lbl">Name</label><input id="rm-name" placeholder="Room 1"/></div>
+      <div><label class="lbl">Capacity</label><input type="number" id="rm-cap" value="35"/></div>
+      <div><label class="lbl">Wing</label><select id="rm-wing"><option value="CBSE">CBSE</option><option value="JEE">JEE</option></select></div>
+    </div>
+    <div style="margin-top:8px"><label class="lbl">Notes / Usage</label><input id="rm-notes"/></div>
+    <div class="modal-foot">
+      <button class="btn btn-err btn-sm" id="rm-del" onclick="deleteRoom()" style="margin-right:auto">Delete</button>
+      <button class="btn btn-sec" onclick="closeRoomModal()">Cancel</button>
+      <button class="btn btn-ok" onclick="saveRoomModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVER MODAL -->
+<div id="driver-modal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeDriverModal()">
+  <div class="modal">
+    <div class="modal-hdr"><span id="dm-title">Add Route</span><button class="modal-close" onclick="closeDriverModal()">×</button></div>
+    <div class="g2">
+      <div><label class="lbl">Driver Name</label><input id="dm-driver"/></div>
+      <div><label class="lbl">Route Name</label><input id="dm-route" placeholder="e.g. Route A - Sector 4"/></div>
+      <div><label class="lbl">Vehicle No.</label><input id="dm-vehicle"/></div>
+      <div><label class="lbl">Phone</label><input id="dm-phone"/></div>
+    </div>
+    <div style="margin-top:8px"><label class="lbl">Stops (comma separated)</label><input id="dm-stops" placeholder="Main Gate, Sector 4, Bus Stand"/></div>
+    <div class="modal-foot">
+      <button class="btn btn-err btn-sm" id="dm-del" onclick="deleteDriver()" style="margin-right:auto">Delete</button>
+      <button class="btn btn-sec" onclick="closeDriverModal()">Cancel</button>
+      <button class="btn btn-ok" onclick="saveDriverModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════ FIREBASE ═══════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBJFGFCxzadD0CE1ojszYQp4p0H6Sz2ob8",
+  authDomain: "basu-nxt-air-schedule.firebaseapp.com",
+  databaseURL: "https://basu-nxt-air-schedule-default-rtdb.firebaseio.com",
+  projectId: "basu-nxt-air-schedule",
+  storageBucket: "basu-nxt-air-schedule.firebasestorage.app",
+  messagingSenderId: "994754056347",
+  appId: "1:994754056347:web:ff9d70a91cdb6a6466f63e"
+};
+
+let db = null;
+
+function loadFirebaseSDK(){
+  return new Promise((resolve, reject) => {
+    // Already loaded
+    if(window.firebase && window.firebase.database && db){
+      resolve(); return;
+    }
+    // Try loading compat SDK
+    function loadScript(url){
+      return new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src=url;
+        s.crossOrigin='anonymous';
+        s.onload=res;
+        s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+    loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js')
+      .then(()=>loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'))
+      .then(()=>{
+        if(!window.firebase) throw new Error('Firebase not available');
+        if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        resolve();
+      })
+      .catch(e=>{
+        // Try alternate CDN
+        return loadScript('https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.js')
+          .then(()=>loadScript('https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-database-compat.js'))
+          .then(()=>{
+            if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            resolve();
+          })
+          .catch(()=>reject(new Error('SDK_BLOCKED')));
+      });
+  });
+}
+
+// Save to Firebase
+function saveToFirebase(){
+  showSyncStatus('⏳ Connecting to Firebase...', '#1e40af');
+  loadFirebaseSDK().then(()=>{
+    // Clean data - remove undefined/functions
+    // Sanitize keys - Firebase doesn't allow / . # $ [ ] in keys
+    function sanitizeKey(k){ return k.replace(/[.#$/\[\]]/g,'_'); }
+    function sanitizeObj(obj){
+      if(typeof obj !== 'object' || obj === null || Array.isArray(obj)) return obj;
+      const out={};
+      Object.entries(obj).forEach(([k,v])=>{ out[sanitizeKey(k)]=sanitizeObj(v); });
+      return out;
+    }
+    const cleanData = JSON.parse(JSON.stringify({
+      slots: sanitizeObj(slots),
+      teachers, rooms,
+      sessReq: sanitizeObj(sessReq),
+      updatedAt: Date.now(),
+      updatedBy: 'admin'
+    }));
+    // Save transport separately to avoid overwrite conflicts
+    const cleanTransport = JSON.parse(JSON.stringify({
+      ...transport,
+      _version: Date.now()  // version timestamp
+    }));
+    db.ref('schedule').set(cleanData)
+      .then(()=>db.ref('transport').set(cleanTransport))
+      .then(()=>{
+        showSyncStatus('✅ Saved! '+new Date().toLocaleTimeString('en-IN'), '#166534');
+        // Flash green
+        const bar=document.getElementById('sync-bar');
+        if(bar){bar.style.background='#166534';setTimeout(()=>bar.style.background='#1e293b',2000);}
+      })
+      .catch(e=>{
+        console.error('Firebase save error:',e);
+        showSyncStatus('❌ Save failed: '+e.message+' — Check Firebase Rules!', '#dc2626');
+      });
+  }).catch(e=>{
+    if(e.message==='SDK_BLOCKED'){
+      showSyncStatus('⚠ Open on GitHub Pages to use cloud sync', '#d97706');
+    } else {
+      showSyncStatus('❌ '+e.message, '#dc2626');
+    }
+  });
+}
+
+// Load from Firebase
+function loadFromFirebase(){
+  showSyncStatus('⏳ Connecting to cloud...', '#1e40af');
+  loadFirebaseSDK().then(()=>{
+    db.ref('schedule').once('value')
+      .then(snap=>{
+        const data = snap.val();
+        if(!data){ showSyncStatus('⚠ No cloud data yet — save first!', '#b45309'); return; }
+        // Restore sanitized keys (_ back to / for Physics / Chemistry etc)
+        function restoreKey(k){ 
+          // Only restore known compound subjects
+          return k.replace('Physics _ Chemistry','Physics / Chemistry')
+                  .replace('Maths _shared_','Maths (shared)')
+                  .replace('Physics _shared_','Physics (shared)')
+                  .replace('Chemistry _shared_','Chemistry (shared)');
+        }
+        function restoreObj(obj){
+          if(typeof obj !== 'object' || obj === null || Array.isArray(obj)) return obj;
+          const out={};
+          Object.entries(obj).forEach(([k,v])=>{ out[restoreKey(k)]=restoreObj(v); });
+          return out;
+        }
+        if(data.slots) slots = restoreObj(data.slots);
+        if(data.teachers && data.teachers.length) teachers = data.teachers;
+        if(data.rooms && data.rooms.length) rooms = data.rooms;
+        if(data.sessReq) sessReq = restoreObj(data.sessReq);
+        // Load transport separately
+        db.ref('transport').once('value').then(tSnap=>{
+          const tData=tSnap.val();
+          const validBatches=BATCHES.map(b=>b.name);
+          function fixBatch(s){
+            if(!s.batch||validBatches.includes(s.batch)) return s;
+            // Try exact match case-insensitive
+            const m=validBatches.find(b=>b.toLowerCase()===s.batch.toLowerCase());
+            if(m) return {...s,batch:m};
+            return s;
+          }
+          if(tData&&tData.students&&tData.students.length){
+            transport={
+              routes: tData.routes||[],
+              students: tData.students.map(fixBatch)
+            };
+          } else if(data.transport&&data.transport.students&&data.transport.students.length){
+            transport={
+              routes: data.transport.routes||[],
+              students: data.transport.students.map(fixBatch)
+            };
+          }
+          renderAll();
+        }).catch(()=>{
+          if(data.transport&&data.transport.students){
+            const vB=BATCHES.map(b=>b.name);
+            transport={
+              routes:data.transport.routes||[],
+              students:data.transport.students.map(s=>{
+                if(!s.batch||vB.includes(s.batch)) return s;
+                const m=vB.find(b=>b.toLowerCase()===s.batch.toLowerCase());
+                return m?{...s,batch:m}:s;
+              })
+            };
+          }
+          renderAll();
+        });
+        const d = new Date(data.updatedAt||Date.now());
+        showSyncStatus('✅ Loaded from cloud! '+d.toLocaleString('en-IN'), '#166534');
+      })
+      .catch(e=>{ showSyncStatus('❌ Load failed: '+e.message, '#dc2626'); });
+  }).catch(e=>{ showSyncStatus('❌ Firebase load failed: '+e.message, '#dc2626'); });
+}
+
+// Listen for real-time updates
+function startLiveSync(){
+  showSyncStatus('⏳ Starting live sync...', '#1e40af');
+  loadFirebaseSDK().then(()=>{
+      db.ref('schedule').on('value', snap=>{
+      const data = snap.val();
+      if(!data) return;
+      function restoreKey2(k){
+        return k.replace('Physics _ Chemistry','Physics / Chemistry')
+                .replace('Maths _shared_','Maths (shared)')
+                .replace('Physics _shared_','Physics (shared)')
+                .replace('Chemistry _shared_','Chemistry (shared)');
+      }
+      function restoreObj2(obj){
+        if(typeof obj !== 'object' || obj === null || Array.isArray(obj)) return obj;
+        const out={};
+        Object.entries(obj).forEach(([k,v])=>{ out[restoreKey2(k)]=restoreObj2(v); });
+        return out;
+      }
+      if(data.slots) slots = restoreObj2(data.slots);
+      if(data.teachers && data.teachers.length) teachers = data.teachers;
+      if(data.rooms && data.rooms.length) rooms = data.rooms;
+      if(data.sessReq) sessReq = restoreObj2(data.sessReq);
+      // Don't overwrite transport from schedule node - transport has its own node
+      renderAll();
+      const d = new Date(data.updatedAt||Date.now());
+      showSyncStatus('🔄 Live! Last: '+d.toLocaleTimeString('en-IN'), '#166534');
+    });
+  }).catch(e=>{
+    if(e.message==='SDK_BLOCKED'){
+      showSyncStatus('⚠ Open on GitHub Pages to use cloud sync', '#d97706');
+    } else {
+      showSyncStatus('❌ '+e.message, '#dc2626');
+    }
+  });
+}
+
+function showSyncStatus(msg, color){
+  const el = document.getElementById('sync-status');
+  if(el){ el.textContent = msg; el.style.color = color; el.style.opacity='1';
+    setTimeout(()=>el.style.opacity='0.6', 3000); }
+}
+
+// ═══════════════════════════════ DATA ═══════════════════════════════
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const WORK_DAYS=['Mon','Tue','Wed','Thu','Fri','Sat'];
+const ALL_DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const BATCHES=[
+  {name:'7th Core',cls:'7th',type:'core',wing:'junior',subjects:['Maths','Science','English','SST']},
+  {name:'7th Edge',cls:'7th',type:'edge',wing:'junior',subjects:['Maths','Science','English','SST']},
+  {name:'8th Core',cls:'8th',type:'core',wing:'junior',subjects:['Maths','Science','English','SST']},
+  {name:'8th Edge',cls:'8th',type:'edge',wing:'junior',subjects:['Maths','Science','English','SST']},
+  {name:'9th Core',cls:'9th',type:'core',wing:'junior',subjects:['Maths','Physics','Chemistry','Biology','English','SST']},
+  {name:'9th Edge',cls:'9th',type:'edge',wing:'junior',subjects:['Maths','Physics','Chemistry','Biology','English','SST']},
+  {name:'10th Core',cls:'10th',type:'core',wing:'junior',subjects:['Maths','Physics','Chemistry','Biology','English','SST']},
+  {name:'10th Edge',cls:'10th',type:'edge',wing:'junior',subjects:['Maths','Physics','Chemistry','Biology','English','SST']},
+  {name:'11th PCM',cls:'11th',type:'pcm',wing:'senior',subjects:['Physics','Chemistry','Maths']},
+  {name:'11th PCB',cls:'11th',type:'pcb',wing:'senior',subjects:['Physics','Chemistry','Biology']},
+  {name:'11th Commerce',cls:'11th',type:'commerce',wing:'senior',subjects:['Accounts','Economics','BST','Maths (shared)']},
+  {name:'12th PCM',cls:'12th',type:'pcm',wing:'senior',subjects:['Physics','Chemistry','Maths']},
+  {name:'12th PCB',cls:'12th',type:'pcb',wing:'senior',subjects:['Physics','Chemistry','Biology']},
+  {name:'12th Commerce',cls:'12th',type:'commerce',wing:'senior',subjects:['Accounts','Economics','BST','Maths (shared)']},
+  // NXT-AIR CENTRE
+  {name:'9th Genesis',cls:'9th',type:'genesis',wing:'nxtair',subjects:['Maths','Physics','Chemistry','Biology','English','SST']},
+  {name:'10th Genesis',cls:'10th',type:'genesis',wing:'nxtair',subjects:['Maths','Physics','Chemistry','Biology','English','SST']},
+  {name:'11th JEE Mains',cls:'11th',type:'jee',wing:'nxtair',subjects:['Maths','Physics','Chemistry']},
+  {name:'11th NEET',cls:'11th',type:'neet',wing:'nxtair',subjects:['Physics','Chemistry','Biology']},
+  {name:'12th JEE Mains',cls:'12th',type:'jee',wing:'nxtair',subjects:['Maths','Physics','Chemistry']},
+  {name:'12th NEET',cls:'12th',type:'neet',wing:'nxtair',subjects:['Physics','Chemistry','Biology']},
+];
+let teachers=[];
+let rooms=[];
+let slots={};
+let sessReq={};
+let transport={routes:[{"driver": "Fool Kumar", "phone": "8527070819", "route": "Route 1", "stops": "Sector-107,105,104,100, 99,47", "vehicle": "UP16LT0153"}, {"driver": "Naresh", "phone": "9911615652", "route": "Route 2", "stops": "Sector-49,39,45,46,42,48", "vehicle": "UP16JT5346"}, {"driver": "Vikash", "phone": "9891883351", "route": "Route 3", "stops": "Shatabdi Enclve ", "vehicle": "UP16HT5761"}, {"driver": "Sachin", "phone": "9761688391", "route": "Route 4", "stops": "Sector-107,104,105,99, 78,41", "vehicle": "UP160780"}, {"driver": "Krishna", "phone": "8103663845", "route": "Route 5", "stops": "", "vehicle": ""}],students:[{"batch": "12th PCM", "id": "s1776620501310", "name": "Goldiee Jena", "pickup": "sector-104", "route": "Route 1", "subjects": ["Maths", "Physics", "Chemistry", "TEST"]}, {"batch": "8th Edge", "id": "s1776620703729", "name": "Aaryav Shree", "pickup": "sector-104", "route": "Route 4", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "11th PCB", "id": "s1776622185619", "name": "Kavya yadav", "pickup": "Sector-39", "route": "Route 2", "subjects": ["Physics", "Chemistry", "Biology", "TEST"]}, {"batch": "9th Edge", "id": "s1776622342040", "name": "Rohini Sharma", "pickup": "Srinath enclave, sector-49", "route": "Route 2", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Edge", "id": "s1776622420726", "name": "Adya Gupta", "pickup": "Supreme tower,Sector-99", "route": "Route 4", "subjects": ["Maths", "Science", "TEST"]}, {"batch": "10th Edge", "id": "s1776622456949", "name": "Saiyyam Jain", "pickup": "Supreme tower,Sector-99", "route": "Route 4", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776622520236", "name": "Viraj  Raj Gupta", "pickup": "Sunworld , sector-107", "route": "Route 4", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "10th Core", "id": "s1776622790640", "name": "Yuvika Mohan", "pickup": "Antriksh Golf view, Gate no 3, Sector-78", "route": "Route 4", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "12th PCB", "id": "s1776622858292", "name": "Nehal Dashmana", "pickup": "Jalvayu Tower, Sector-47", "route": "Route 1", "subjects": ["Physics", "Chemistry", "Biology", "TEST"]}, {"batch": "10th Edge", "id": "s1776622900435", "name": "Chaitanya Gupta", "pickup": "Supreme towers, Sector-99", "route": "Route 1", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "10th Edge", "id": "s1776623049902", "name": "Deeetya Gupta", "pickup": "A-180, Sector-47", "route": "Route 1", "subjects": ["Maths", "Science", "TEST"]}, {"batch": "10th Edge", "id": "s1776623183461", "name": "Harnoor Piplani", "pickup": "Sunworld, Sector-107", "route": "Route 1", "subjects": ["Maths", "Science", "SST", "TEST"]}, {"batch": "10th Edge", "id": "s1776623442968", "name": "Prakhar Agarwal", "pickup": "Sector-105", "route": "Route 1", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "12th Commerce", "id": "s1776623868875", "name": "Arnav Gupta", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Accounts", "Economics", "BST", "TEST"]}, {"batch": "9th Edge", "id": "s1776623941183", "name": "Aarush Ghosh", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776623986376", "name": "Vriddhi Bansal", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776624052885", "name": "Pearl Sharma", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776624153197", "name": "Aditi Sharma", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Edge", "id": "s1776624403406", "name": "Jayant Singh", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776624459764", "name": "Anushka Singh", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "8th Edge", "id": "s1776624548119", "name": "Mayank Kumar", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Maths", "Science", "TEST"]}, {"batch": "10th Edge", "id": "s1776624639582", "name": "Mishika Chaudhary", "pickup": "Shatabdi Enclave", "route": "Route 3", "subjects": ["Maths", "Science", "SST", "TEST"]}, {"batch": "10th Core", "id": "s1776624700608", "name": "Kanishka Berry", "pickup": "Sector-42", "route": "Route 2", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776624857747", "name": "Sohana Jena", "pickup": "Sector-104", "route": "Route 1", "subjects": ["Maths", "Science", "TEST"]}, {"batch": "9th Edge", "id": "s1776624890520", "name": "Gauransh Sharma", "pickup": "Sector-104", "route": "Route 1", "subjects": ["Maths", "Science", "English", "SST"]}, {"batch": "9th Core", "id": "s1776624950801", "name": "Maulik Das", "pickup": "Sector-104", "route": "Route 1", "subjects": ["Maths", "Science", "TEST"]}, {"batch": "10th Core", "id": "s1776624981197", "name": "NIshat Khan", "pickup": "Sector-45", "route": "Route 2", "subjects": ["Maths", "Science", "Biology", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776625162832", "name": "Shivi Sharma", "pickup": "SD Vidya School, Sector-49", "route": "Route 2", "subjects": ["Maths", "Science", "TEST"]}, {"batch": "9th Core", "id": "s1776625215151", "name": "Ansh Kushwaha", "pickup": "Sector-45", "route": "Route 2", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "8th Core", "id": "s1776625446288", "name": "Raunaq Chaudhary", "pickup": "Sector-105", "route": "Route 1", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "8th Core", "id": "s1776625466037", "name": "Jivisha Chaudhary", "pickup": "Sector-105", "route": "Route 1", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "10th Core", "id": "s1776625498866", "name": "Bhavi Chaudhary", "pickup": "Sector-105", "route": "Route 1", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "11th PCB", "id": "s1776625520608", "name": "Pranjal Mukherjee", "pickup": "Sector-105", "route": "Route 4", "subjects": ["Physics", "Chemistry", "Biology", "TEST"]}, {"batch": "9th Core", "id": "s1776625825491", "name": "Yug Nagal", "pickup": "Sector-99", "route": "Route 4", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "10th Edge", "id": "s1776625848169", "name": "Anya Garg", "pickup": "Sector-99", "route": "Route 4", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "10th Core", "id": "s1776625894476", "name": "Angel Rajput", "pickup": "Sector-73", "route": "Route 5", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Edge", "id": "s1776625949013", "name": "Aadit Tiwari", "pickup": "Sector-76 Silicon City", "route": "Route 5", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776625982005", "name": "Rudra Gahan", "pickup": "Sector-116", "route": "Route 5", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "9th Core", "id": "s1776626019173", "name": "Medhansh Anand", "pickup": "Sector-77 Antriksh Forestt", "route": "Route 5", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}, {"batch": "11th PCB", "id": "s1776626218530", "name": "Vanshika Parmar", "pickup": "Sector-99 Green View Apartment", "route": "Route 1", "subjects": ["Physics", "Chemistry", "Biology", "TEST"]}, {"batch": "8th Edge", "id": "s1776661184358", "name": "Sambhavi Shukla", "pickup": "Elite Golf Green", "route": "Route 5", "subjects": ["Maths", "Science", "English", "SST", "TEST"]}]}
+let editTeacherIdx=-1,editRoomIdx=-1,editDriverIdx=-1;
+let slotModalCtx=null; // {batchName,day,idx or null}
+let copiedSlot=null;
+let activeFilter='all';
+let draggedRPGroup=null;
+let builderLog=[];
+
+// Subject color map
+const SCLS={Maths:'cM','Maths (shared)':'cM',Science:'cSc',Physics:'cP','Physics (shared)':'cP',Chemistry:'cC','Chemistry (shared)':'cC',Biology:'cB','Physics / Chemistry':'cPC',English:'cE',SST:'cSS',Hindi:'cSS',Sanskrit:'cSS',Computer:'cAc',Accounts:'cAc',Economics:'cEc',BST:'cBst',TEST:'cTe'};
+function sc(s){return SCLS[s]||'cDef';}
+function t2m(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+function m2t(m){const h=Math.floor(m/60),mm=m%60,p=h>=12?'PM':'AM',h12=h>12?h-12:(h===0?12:h);return `${h12}:${String(mm).padStart(2,'0')} ${p}`;}
+
+function initData(){
+  teachers=[
+    {id:'t1',name:'Badola mam',subjects:['Maths'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:2,notes:'7th & 8th Maths'},
+    {id:'t2',name:'Komal mam',subjects:['Science'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:2,notes:'7th & 8th Science'},
+    {id:'t3',name:'Khushboo mam',subjects:['Maths','Maths (shared)'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:6,notes:'9th–12th Maths (Junior + Senior both)'},
+    {id:'t4',name:'Shaily mam',subjects:['Physics','Chemistry','Physics / Chemistry'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:4,notes:'9th & 10th Phy/Chem'},
+    {id:'t5',name:'Rahul sir',subjects:['Biology'],days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],max:4,notes:'9th & 10th Biology + NXT-AIR'},
+    {id:'t6',name:'Nidhi mam',subjects:['English'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:6,notes:'7th–10th English'},
+    {id:'t7',name:'Raunak mam',subjects:['SST'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:6,notes:'7th–10th SST'},
+    {id:'t8',name:'Gautam sir',subjects:['Physics'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:4,notes:'11th & 12th Physics'},
+    {id:'t9',name:'Amit sir',subjects:['Chemistry'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:4,notes:'11th & 12th Chemistry'},
+    {id:'t10',name:'Naveen sir',subjects:['Accounts'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:4,notes:'11th & 12th Accounts'},
+    {id:'t11',name:'Ritika mam',subjects:['Economics','BST'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:6,notes:'Commerce Eco+BST'},
+    {id:'t12',name:'Neha mam',subjects:['Biology'],days:['Mon','Tue','Wed','Thu','Fri','Sat'],max:4,notes:'11th & 12th Biology'},
+    // NXT-AIR teachers
+    {id:'t13',name:'Arun sir',subjects:['Physics'],days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],max:6,notes:'NXT-AIR Physics'},
+    {id:'t14',name:'Kajal mam',subjects:['Maths'],days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],max:6,notes:'NXT-AIR Maths'},
+    {id:'t15',name:'Vidhi mam',subjects:['Chemistry'],days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],max:6,notes:'NXT-AIR Chemistry'},
+  ];
+  rooms=[
+    {id:'r1',name:'Room 1',cap:35,wing:'CBSE',notes:''},
+    {id:'r2',name:'Room 2',cap:35,wing:'CBSE',notes:''},
+    {id:'r3',name:'Room 3',cap:35,wing:'CBSE',notes:''},
+    {id:'r4',name:'Room 4',cap:35,wing:'CBSE',notes:''},
+    {id:'r5',name:'Room 5',cap:35,wing:'CBSE',notes:''},
+    {id:'r6',name:'Room 6',cap:35,wing:'CBSE',notes:''},
+    {id:'r7',name:'Room 7',cap:35,wing:'CBSE',notes:''},
+    {id:'r8',name:'Room 8',cap:35,wing:'CBSE',notes:''},
+    // NXT-AIR rooms
+    {id:'ra',name:'Room A',cap:40,wing:'NXT-AIR',notes:''},
+    {id:'rb',name:'Room B',cap:40,wing:'NXT-AIR',notes:''},
+    {id:'rc',name:'Room C',cap:40,wing:'NXT-AIR',notes:''},
+    {id:'rd',name:'Room D',cap:40,wing:'NXT-AIR',notes:''},
+  ];
+  // Batch strength (student count) - used for room capacity check
+  if(!window.batchStrength) {
+    window.batchStrength={
+      '7th Core':35,'7th Edge':35,'8th Core':35,'8th Edge':35,
+      '9th Core':40,'9th Edge':40,'10th Core':40,'10th Edge':40,
+      '11th PCM':30,'11th PCB':30,'11th Commerce':25,
+      '12th PCM':30,'12th PCB':30,'12th Commerce':25
+    };
+  }
+
+  sessReq={
+    '7th Core':{Maths:3,Science:3,English:2,SST:2},
+    '7th Edge':{Maths:3,Science:3,English:2,SST:2},
+    '8th Core':{Maths:3,Science:3,English:2,SST:2},
+    '8th Edge':{Maths:3,Science:3,English:2,SST:2},
+    '9th Core':{Maths:3,'Physics / Chemistry':2,Biology:1,English:2,SST:2},
+    '9th Edge':{Maths:3,'Physics / Chemistry':2,Biology:1,English:2,SST:2},
+    '10th Core':{Maths:3,'Physics / Chemistry':2,Biology:1,English:2,SST:2},
+    '10th Edge':{Maths:3,'Physics / Chemistry':2,Biology:1,English:2,SST:2},
+    '11th PCM':{Physics:3,Chemistry:3,Maths:3},
+    '11th PCB':{Physics:3,Chemistry:3,Biology:3},
+    '11th Commerce':{Accounts:3,Economics:3,BST:3,'Maths (shared)':3},
+    '12th PCM':{Physics:3,Chemistry:3,Maths:3},
+    '12th PCB':{Physics:3,Chemistry:3,Biology:3},
+    '12th Commerce':{Accounts:3,Economics:3,BST:3,'Maths (shared)':3},
+  };
+}
+
+function loadPDFSchedule() {
+  slots = {};
+  const s = (batch, day, subj, teacher, start, end, room, opts={}) => {
+    const key = batch+'||'+day;
+    if(!slots[key]) slots[key] = [];
+    slots[key].push({ subj, teacher, start, end, room: room||'', merged: opts.merged||'', notes: opts.notes||'', isTest: opts.isTest||false });
+  };
+
+  // ROOM ASSIGNMENT (8 rooms total, no conflicts):
+  // Junior Wing 4:30-7:00 PM: 7th Core=R1, 7th Edge=R2, 8th Core=R3, 8th Edge=R4
+  //                            9th Core=R5, 9th Edge=R6, 10th Core=R7, 10th Edge=R8
+  // Senior Wing 4:30-8:30 PM: Uses rooms after junior vacates OR dedicated rooms
+  // 11th PCM=R1, 11th PCB=R2, 11th Commerce=R3 (senior starts at 5:45 in these)
+  // 12th PCM=R4, 12th PCB=R5, 12th Commerce=R6 (senior starts at 4:30 in these)
+  // NOTE: Where junior and senior overlap in time, different rooms are used
+
+  // ── 7TH CORE (Room 1: 4:30-7:00 PM) ──
+  s('7th Core','Mon','Maths','Badola mam','16:30','17:45','Room 1');
+  s('7th Core','Mon','Science','Komal mam','17:45','19:00','Room 1');
+  s('7th Core','Tue','SST','Raunak mam','17:00','18:00','Room 1',{merged:'7th Edge'});
+  s('7th Core','Tue','English','Nidhi mam','18:00','19:00','Room 1',{merged:'7th Edge'});
+  s('7th Core','Wed','Maths','Badola mam','16:30','17:45','Room 1');
+  s('7th Core','Wed','Science','Komal mam','17:45','19:00','Room 1');
+  s('7th Core','Thu','SST','Raunak mam','17:00','18:00','Room 1',{merged:'7th Edge'});
+  s('7th Core','Thu','English','Nidhi mam','18:00','19:00','Room 1',{merged:'7th Edge'});
+  s('7th Core','Fri','Maths','Badola mam','16:30','17:45','Room 1');
+  s('7th Core','Fri','Science','Komal mam','17:45','19:00','Room 1');
+  s('7th Core','Sat','TEST','','17:00','19:00','Room 1',{isTest:true});
+
+  // ── 7TH EDGE (Room 2) ──
+  s('7th Edge','Mon','Science','Komal mam','16:30','17:45','Room 2');
+  s('7th Edge','Mon','Maths','Badola mam','17:45','19:00','Room 2');
+  s('7th Edge','Tue','SST','Raunak mam','17:00','18:00','Room 1',{merged:'7th Core'});
+  s('7th Edge','Tue','English','Nidhi mam','18:00','19:00','Room 1',{merged:'7th Core'});
+  s('7th Edge','Wed','Science','Komal mam','16:30','17:45','Room 2');
+  s('7th Edge','Wed','Maths','Badola mam','17:45','19:00','Room 2');
+  s('7th Edge','Thu','SST','Raunak mam','17:00','18:00','Room 1',{merged:'7th Core'});
+  s('7th Edge','Thu','English','Nidhi mam','18:00','19:00','Room 1',{merged:'7th Core'});
+  s('7th Edge','Fri','TEST','','17:00','19:00','Room 2',{isTest:true});
+  s('7th Edge','Sat','Maths','Badola mam','16:30','17:30','Room 2');
+  s('7th Edge','Sat','Science','Komal mam','17:30','18:30','Room 2');
+
+  // ── 8TH CORE (Room 3) ──
+  s('8th Core','Mon','English','Nidhi mam','17:00','18:00','Room 3',{merged:'8th Edge'});
+  s('8th Core','Mon','SST','Raunak mam','18:00','19:00','Room 3',{merged:'8th Edge'});
+  s('8th Core','Tue','Maths','Badola mam','16:30','17:45','Room 3');
+  s('8th Core','Tue','Science','Komal mam','17:45','19:00','Room 3');
+  s('8th Core','Wed','English','Nidhi mam','17:00','18:00','Room 3',{merged:'8th Edge'});
+  s('8th Core','Wed','SST','Raunak mam','18:00','19:00','Room 3',{merged:'8th Edge'});
+  s('8th Core','Thu','Maths','Badola mam','16:30','17:45','Room 3');
+  s('8th Core','Thu','Science','Komal mam','17:45','19:00','Room 3');
+  s('8th Core','Fri','Science','Komal mam','16:30','17:45','Room 3');
+  s('8th Core','Fri','Maths','Badola mam','17:45','19:00','Room 3');
+  s('8th Core','Sat','TEST','','17:00','19:00','Room 3',{isTest:true});
+
+  // ── 8TH EDGE (Room 4) ──
+  s('8th Edge','Mon','English','Nidhi mam','17:00','18:00','Room 3',{merged:'8th Core'});
+  s('8th Edge','Mon','SST','Raunak mam','18:00','19:00','Room 3',{merged:'8th Core'});
+  s('8th Edge','Tue','Science','Komal mam','16:30','17:45','Room 4');
+  s('8th Edge','Tue','Maths','Badola mam','17:45','19:00','Room 4');
+  s('8th Edge','Wed','English','Nidhi mam','17:00','18:00','Room 3',{merged:'8th Core'});
+  s('8th Edge','Wed','SST','Raunak mam','18:00','19:00','Room 3',{merged:'8th Core'});
+  s('8th Edge','Thu','Science','Komal mam','16:30','17:45','Room 4');
+  s('8th Edge','Thu','Maths','Badola mam','17:45','19:00','Room 4');
+  s('8th Edge','Fri','TEST','','17:00','19:00','Room 4',{isTest:true});
+  s('8th Edge','Sat','Science','Komal mam','16:30','17:30','Room 4');
+  s('8th Edge','Sat','Maths','Badola mam','17:30','18:30','Room 4');
+
+  // ── 9TH CORE (Room 5) ──
+  s('9th Core','Mon','SST','Raunak mam','17:00','18:00','Room 5',{merged:'9th Edge'});
+  s('9th Core','Mon','English','Nidhi mam','18:00','19:00','Room 5',{merged:'9th Edge'});
+  s('9th Core','Tue','Maths','Khushboo mam','16:30','17:45','Room 5');
+  s('9th Core','Tue','Physics / Chemistry','Shaily mam','17:45','19:00','Room 5');
+  s('9th Core','Wed','SST','Raunak mam','17:00','18:00','Room 5',{merged:'9th Edge'});
+  s('9th Core','Wed','English','Nidhi mam','18:00','19:00','Room 5',{merged:'9th Edge'});
+  s('9th Core','Thu','Maths','Khushboo mam','16:30','17:45','Room 5');
+  s('9th Core','Thu','Physics / Chemistry','Shaily mam','17:45','19:00','Room 5');
+  s('9th Core','Fri','Biology','Rahul sir','16:30','17:30','Room 5');
+  s('9th Core','Fri','Maths','Khushboo mam','17:30','18:30','Room 5');
+  s('9th Core','Sat','TEST','','17:00','19:00','Room 5',{isTest:true});
+
+  // ── 9TH EDGE (Room 6) ──
+  s('9th Edge','Mon','SST','Raunak mam','17:00','18:00','Room 5',{merged:'9th Core'});
+  s('9th Edge','Mon','English','Nidhi mam','18:00','19:00','Room 5',{merged:'9th Core'});
+  s('9th Edge','Tue','Physics / Chemistry','Shaily mam','16:30','17:45','Room 6');
+  s('9th Edge','Tue','Maths','Khushboo mam','17:45','19:00','Room 6');
+  s('9th Edge','Wed','SST','Raunak mam','17:00','18:00','Room 5',{merged:'9th Core'});
+  s('9th Edge','Wed','English','Nidhi mam','18:00','19:00','Room 5',{merged:'9th Core'});
+  s('9th Edge','Thu','Physics / Chemistry','Shaily mam','16:30','17:45','Room 6');
+  s('9th Edge','Thu','Maths','Khushboo mam','17:45','19:00','Room 6');
+  s('9th Edge','Fri','TEST','','17:00','19:00','Room 6',{isTest:true});
+  s('9th Edge','Sat','Biology','Rahul sir','16:30','17:30','Room 6');
+  s('9th Edge','Sat','Maths','Khushboo mam','17:30','18:30','Room 6');
+
+  // ── 10TH CORE (Room 7) ──
+  s('10th Core','Mon','Maths','Khushboo mam','16:30','17:45','Room 7');
+  s('10th Core','Mon','Physics / Chemistry','Shaily mam','17:45','19:00','Room 7');
+  s('10th Core','Tue','English','Nidhi mam','17:00','18:00','Room 7',{merged:'10th Edge'});
+  s('10th Core','Tue','SST','Raunak mam','18:00','19:00','Room 7',{merged:'10th Edge'});
+  s('10th Core','Wed','Maths','Khushboo mam','16:30','17:45','Room 7');
+  s('10th Core','Wed','Biology','Rahul sir','17:45','19:00','Room 7');
+  s('10th Core','Thu','English','Nidhi mam','17:00','18:00','Room 7',{merged:'10th Edge'});
+  s('10th Core','Thu','SST','Raunak mam','18:00','19:00','Room 7',{merged:'10th Edge'});
+  s('10th Core','Fri','Maths','Khushboo mam','16:30','17:30','Room 7');
+  s('10th Core','Fri','Physics / Chemistry','Shaily mam','17:30','18:30','Room 7');
+  s('10th Core','Sat','TEST','','17:00','19:00','Room 7',{isTest:true});
+
+  // ── 10TH EDGE (Room 8) ──
+  s('10th Edge','Mon','Physics / Chemistry','Shaily mam','16:30','17:45','Room 8');
+  s('10th Edge','Mon','Maths','Khushboo mam','17:45','19:00','Room 8');
+  s('10th Edge','Tue','English','Nidhi mam','17:00','18:00','Room 7',{merged:'10th Core'});
+  s('10th Edge','Tue','SST','Raunak mam','18:00','19:00','Room 7',{merged:'10th Core'});
+  s('10th Edge','Wed','Biology','Rahul sir','16:30','17:45','Room 8');
+  s('10th Edge','Wed','Maths','Khushboo mam','17:45','19:00','Room 8');
+  s('10th Edge','Thu','English','Nidhi mam','17:00','18:00','Room 7',{merged:'10th Core'});
+  s('10th Edge','Thu','SST','Raunak mam','18:00','19:00','Room 7',{merged:'10th Core'});
+  s('10th Edge','Fri','TEST','','17:00','19:00','Room 8',{isTest:true});
+  s('10th Edge','Sat','Maths','Khushboo mam','16:30','17:30','Room 8');
+  s('10th Edge','Sat','Physics / Chemistry','Shaily mam','17:30','18:30','Room 8');
+
+  // ═══════════════════════════════════════
+  // SENIOR WING — exact from PDF
+  // PCM/B = PCM + PCB merged for Physics, Chemistry
+  // Maths = PCM + Commerce merged
+  // Biology = PCB only
+  // ═══════════════════════════════════════
+
+  // ── 11TH PCM/B — Mon ──
+  // Chemistry merged PCM+PCB, then Maths(PCM+Commerce) / Biology(PCB)
+  s('11th PCM','Mon','Chemistry','Amit sir','17:45','19:00','Room 6',{merged:'11th PCB'});
+  s('11th PCB','Mon','Chemistry','Amit sir','17:45','19:00','Room 4',{merged:'11th PCM'});
+  s('11th PCM','Mon','Maths','Khushboo mam','19:00','20:30','Room 6',{merged:'11th Commerce'});
+  s('11th PCB','Mon','Biology','Neha mam','19:00','20:30','Room 4');
+
+  // ── 11TH PCM/B — Tue ──
+  s('11th PCM','Tue','Physics','Gautam sir','16:30','17:45','Room 8',{merged:'11th PCB'});
+  s('11th PCB','Tue','Physics','Gautam sir','16:30','17:45','Room 2',{merged:'11th PCM'});
+
+  // ── 11TH PCM/B — Wed ──
+  s('11th PCM','Wed','Chemistry','Amit sir','17:45','19:00','Room 6',{merged:'11th PCB'});
+  s('11th PCB','Wed','Chemistry','Amit sir','17:45','19:00','Room 4',{merged:'11th PCM'});
+  s('11th PCM','Wed','Maths','Khushboo mam','19:00','20:30','Room 6',{merged:'11th Commerce'});
+  s('11th PCB','Wed','Biology','Neha mam','19:00','20:30','Room 4');
+
+  // ── 11TH PCM/B — Thu ──
+  s('11th PCM','Thu','Physics','Gautam sir','16:30','17:45','Room 8',{merged:'11th PCB'});
+  s('11th PCB','Thu','Physics','Gautam sir','16:30','17:45','Room 2',{merged:'11th PCM'});
+
+  // ── 11TH PCM/B — Fri ──
+  s('11th PCM','Fri','Chemistry','Amit sir','16:30','17:30','SHORTAGE',{merged:'11th PCB'});
+  s('11th PCB','Fri','Chemistry','Amit sir','16:30','17:30','SHORTAGE',{merged:'11th PCM'});
+  s('11th PCM','Fri','Physics','Gautam sir','17:30','18:30','SHORTAGE',{merged:'11th PCB'});
+  s('11th PCB','Fri','Physics','Gautam sir','17:30','18:30','SHORTAGE',{merged:'11th PCM'});
+  s('11th PCM','Fri','Maths','Khushboo mam','18:30','19:30','Room 7',{merged:'11th Commerce'});
+  s('11th PCB','Fri','Biology','Neha mam','18:30','19:30','Room 5');
+
+  // ── 11TH PCM/B — Sat ──
+  s('11th PCM','Sat','TEST','','17:00','19:00','SHORTAGE',{isTest:true});
+  s('11th PCB','Sat','TEST','','17:00','19:00','SHORTAGE',{isTest:true});
+
+  // ── 11TH COMMERCE ──
+  s('11th Commerce','Mon','BST','Ritika mam','16:45','17:45','SHORTAGE');
+  s('11th Commerce','Mon','Accounts','Naveen sir','17:45','19:00','SHORTAGE');
+  s('11th Commerce','Mon','Maths (shared)','Khushboo mam','19:00','20:30','Room 8',{merged:'11th PCM'});
+  s('11th Commerce','Tue','Economics','Ritika mam','16:30','17:45','SHORTAGE');
+  s('11th Commerce','Wed','BST','Ritika mam','16:45','17:45','SHORTAGE');
+  s('11th Commerce','Wed','Accounts','Naveen sir','17:45','19:00','SHORTAGE');
+  s('11th Commerce','Wed','Maths (shared)','Khushboo mam','19:00','20:30','Room 8',{merged:'11th PCM'});
+  s('11th Commerce','Thu','Economics','Ritika mam','16:30','17:45','SHORTAGE');
+  s('11th Commerce','Fri','Economics','Ritika mam','16:30','17:30','SHORTAGE');
+  s('11th Commerce','Fri','Accounts','Naveen sir','17:30','18:30','SHORTAGE');
+  s('11th Commerce','Fri','Maths (shared)','Khushboo mam','18:30','19:30','SHORTAGE',{merged:'11th PCM'});
+  s('11th Commerce','Sat','TEST','','17:00','19:00','SHORTAGE',{isTest:true});
+
+  // ── 12TH COMMERCE (exact from PDF image) ──
+  s('12th Commerce','Mon','Accounts','Naveen sir','16:30','17:45','Room 6');
+  s('12th Commerce','Mon','BST','Ritika mam','17:45','18:45','SHORTAGE');
+  s('12th Commerce','Tue','Economics','Ritika mam','17:45','19:00','Room 8');
+  s('12th Commerce','Tue','Maths (shared)','Khushboo mam','19:00','20:30','Room 6',{merged:'12th PCM'});
+  s('12th Commerce','Wed','Accounts','Naveen sir','16:30','17:45','Room 6');
+  s('12th Commerce','Wed','BST','Ritika mam','17:45','18:45','SHORTAGE');
+  s('12th Commerce','Thu','Economics','Ritika mam','17:45','19:00','Room 8');
+  s('12th Commerce','Thu','Maths (shared)','Khushboo mam','19:00','20:30','Room 6',{merged:'12th PCM'});
+  s('12th Commerce','Fri','Economics','Ritika mam','17:30','18:30','SHORTAGE');
+  s('12th Commerce','Fri','Accounts','Naveen sir','18:30','19:30','SHORTAGE');
+  s('12th Commerce','Fri','Maths (shared)','Khushboo mam','19:30','20:30','Room 6',{merged:'12th PCM'});
+  s('12th Commerce','Sat','TEST','','17:00','19:00','SHORTAGE',{isTest:true});
+
+  // ── 12TH PCM/B (exact from PDF image) ──
+  s('12th PCM','Mon','Chemistry','Amit sir','16:30','17:45','Room 4',{merged:'12th PCB'});
+  s('12th PCB','Mon','Chemistry','Amit sir','16:30','17:45','SHORTAGE',{merged:'12th PCM'});
+  s('12th PCM','Tue','Physics','Gautam sir','17:45','19:00','Room 2',{merged:'12th PCB'});
+  s('12th PCB','Tue','Physics','Gautam sir','17:45','19:00','SHORTAGE',{merged:'12th PCM'});
+  s('12th PCM','Tue','Maths','Khushboo mam','19:00','20:30','Room 4',{merged:'12th Commerce'});
+  s('12th PCB','Tue','Biology','Neha mam','19:00','20:30','Room 8');
+  s('12th PCM','Wed','Chemistry','Amit sir','16:30','17:45','Room 4',{merged:'12th PCB'});
+  s('12th PCB','Wed','Chemistry','Amit sir','16:30','17:45','SHORTAGE',{merged:'12th PCM'});
+  s('12th PCM','Thu','Physics','Gautam sir','17:45','19:00','Room 2',{merged:'12th PCB'});
+  s('12th PCB','Thu','Physics','Gautam sir','17:45','19:00','SHORTAGE',{merged:'12th PCM'});
+  s('12th PCM','Thu','Maths','Khushboo mam','19:00','20:30','Room 4',{merged:'12th Commerce'});
+  s('12th PCB','Thu','Biology','Neha mam','19:00','20:30','Room 8');
+  s('12th PCM','Fri','Chemistry','Amit sir','17:30','18:30','SHORTAGE',{merged:'12th PCB'});
+  s('12th PCB','Fri','Chemistry','Amit sir','17:30','18:30','SHORTAGE',{merged:'12th PCM'});
+  s('12th PCM','Fri','Physics','Gautam sir','18:30','19:30','SHORTAGE',{merged:'12th PCB'});
+  s('12th PCB','Fri','Physics','Gautam sir','18:30','19:30','SHORTAGE',{merged:'12th PCM'});
+  s('12th PCM','Fri','Maths','Khushboo mam','19:30','20:30','Room 4',{merged:'12th Commerce'});
+  s('12th PCB','Fri','Biology','Neha mam','19:30','20:30','Room 8');
+  s('12th PCM','Sat','TEST','','17:00','19:00','SHORTAGE',{isTest:true});
+  s('12th PCB','Sat','TEST','','17:00','19:00','SHORTAGE',{isTest:true});
+}
+
+
+// ═══════════════════════════════ NAV ═══════════════════════════════
+const PAGE_TITLES={dashboard:'Dashboard',builder:'Schedule Builder',timetable:'Weekly Timetable',rooms:'Room Planner',free:'Availability Dashboard',conflicts:'Conflict Checker',transport:'Transport Manager',teachers:'Teacher Directory',settings:'Settings & Config'};
+
+function goPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.sidebar .nav button').forEach(b=>b.classList.remove('on'));
+  document.getElementById('page-'+name).classList.add('on');
+  if(btn){ document.querySelectorAll('.sidebar .nav button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+  else {
+    document.querySelectorAll('.sidebar .nav button').forEach(b=>{
+      if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+name+"'")) b.classList.add('on');
+    });
+  }
+  const titleEl=document.getElementById('page-title');
+  if(titleEl) titleEl.textContent=PAGE_TITLES[name]||name;
+  if(name==='timetable') renderBatchView();
+  if(name==='rooms') { renderRoomPlanner(); renderRoomMgmt(); }
+  if(name==='free') { initFreeSlots(); renderFreeSlots(); }
+  if(name==='conflicts') runConflicts();
+  if(name==='transport') {renderRoutes();renderDriverSchedule();
+    updateBatchesByCentre();
+  }
+  if(name==='teachers') renderTeacherTable();
+  if(name==='settings') { renderBatchConfig(); renderSessConfig(); }
+  if(name==='dashboard') updateStats();
+}
+
+// ═══════════════════════════════ STATS ═══════════════════════════════
+function updateStats(){
+  const total=Object.values(slots).reduce((n,a)=>n+a.length,0);
+  const tests=Object.values(slots).reduce((n,a)=>n+a.filter(s=>s.isTest).length,0);
+  document.getElementById('stat-grid').innerHTML=`
+    <div class="stat-box"><div class="stat-val">${BATCHES.length}</div><div class="stat-lbl">Batches</div></div>
+    <div class="stat-box"><div class="stat-val">${total-tests}</div><div class="stat-lbl">Class Slots</div></div>
+    <div class="stat-box"><div class="stat-val">${teachers.length}</div><div class="stat-lbl">Teachers</div></div>
+    <div class="stat-box"><div class="stat-val">${rooms.length}</div><div class="stat-lbl">Rooms</div></div>`;
+}
+
+// ═══════════════════════════════ BUILDER ═══════════════════════════════
+function initBuilder(){
+  const bs=document.getElementById('b-batch');
+  if(bs) bs.innerHTML=BATCHES.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  const ts=document.getElementById('b-teacher');
+  if(ts) ts.innerHTML='<option value="">— auto-detect —</option>'+teachers.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
+  const ms=document.getElementById('b-merge');
+  if(ms) ms.innerHTML='<option value="">— no merge —</option>'+BATCHES.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  // Day buttons
+  const dc=document.getElementById('builder-days');
+  if(dc) dc.innerHTML=WORK_DAYS.map(d=>`<button class="day-btn" onclick="toggleDayBtn(this)">${d}</button>`).join('');
+}
+
+function toggleDayBtn(btn){btn.classList.toggle('on');}
+
+function builderAdd(){
+  const batch=document.getElementById('b-batch').value;
+  const subj=document.getElementById('b-subj').value;
+  const start=document.getElementById('b-start').value;
+  const end=document.getElementById('b-end').value;
+  let teacher=document.getElementById('b-teacher').value;
+  const room=document.getElementById('b-room').value;
+  const mergeWith=document.getElementById('b-merge').value;
+  const selDays=[...document.querySelectorAll('#builder-days .day-btn.on')].map(b=>b.textContent);
+
+  if(!batch||!subj||!start||!end){document.getElementById('builder-status').textContent='⚠ Fill batch, subject and times';return;}
+  if(!selDays.length){document.getElementById('builder-status').textContent='⚠ Select at least one day';return;}
+
+  // Auto-detect teacher
+  if(!teacher){
+    const t=teachers.find(t=>t.subjects.some(s=>s===subj||s.includes(subj.split('/')[0].trim())));
+    if(t) teacher=t.name;
+  }
+
+  let added=0;
+  selDays.forEach(day=>{
+    const key=batch+'||'+day;
+    if(!slots[key]) slots[key]=[];
+    if(!slots[key].some(s=>s.subj===subj&&s.start===start)){
+      slots[key].push({subj,teacher,start,end,room,merged:mergeWith,notes:'',isTest:subj==='TEST'});
+      added++;
+    }
+    // Add to merge partner too
+    if(mergeWith){
+      const mk=mergeWith+'||'+day;
+      if(!slots[mk]) slots[mk]=[];
+      if(!slots[mk].some(s=>s.subj===subj&&s.start===start)){
+        slots[mk].push({subj,teacher,start,end,room,merged:batch,notes:'',isTest:subj==='TEST'});
+      }
+    }
+  });
+
+  const logEntry=`✅ ${batch} — ${subj} — ${start}–${end}${teacher?' ('+teacher+')':''} → ${selDays.join(', ')} [${added} new]`;
+  builderLog.unshift(logEntry);
+  document.getElementById('builder-log').innerHTML=builderLog.slice(0,20).map(l=>`<div style="padding:3px 0;border-bottom:1px solid #f0f0f0;font-size:.75rem">${l}</div>`).join('');
+  document.getElementById('builder-status').textContent=`✅ Added ${added} slot(s)`;
+  updateStats();
+}
+
+function builderClear(){
+  document.querySelectorAll('#builder-days .day-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('b-room').value='';
+  document.getElementById('b-merge').value='';
+  document.getElementById('builder-status').textContent='';
+}
+
+// ═══════════════════════════════ TIMETABLE RENDER ═══════════════════════════════
+let ttView='batch';
+function setTTView(v,btn){
+  ttView=v;
+  document.querySelectorAll('#page-timetable .vtab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('#page-timetable .vpanel').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('vp-'+v).classList.add('on');
+  if(v==='batch') renderBatchView();
+  if(v==='teacher') renderTeacherView();
+  if(v==='room') renderRoomView();
+}
+
+function renderBatchView(){
+  // Filter tabs
+  const fc=document.getElementById('batch-filter');
+  if(fc) fc.innerHTML=['all','7th','8th','9th','10th','11th','12th','nxtair'].map(f=>`<button class="ftab${activeFilter===f?' on':''}" onclick="setFilter('${f}',this)">${f==='all'?'All':f==='nxtair'?'NXT-AIR':f}</button>`).join('');
+
+  const inactive=window.inactiveBatches||[];
+  const visBatches=(activeFilter==='all'?BATCHES:activeFilter==='nxtair'?BATCHES.filter(b=>b.wing==='nxtair'):BATCHES.filter(b=>b.cls===activeFilter&&b.wing!=='nxtair')).filter(b=>!inactive.includes(b.name));
+  const tbl=document.getElementById('tt-batch');
+  if(!tbl) return;
+
+  let html='<thead><tr><th class="batch-col">Batch</th>';
+  DAYS.forEach(d=>html+=`<th${d==='Sat'?' style="background:#d97706"':d==='Sun'?' style="background:#6d28d9"':''}>${d}</th>`);
+  html+='</tr></thead><tbody>';
+
+  visBatches.forEach(batch=>{
+    html+=`<tr><td class="lbl-col">${batch.name}${batch.wing==='nxtair'?'<br><span style="font-size:.55rem;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px">NXT-AIR</span>':''}</td>`;
+    DAYS.forEach(day=>{
+      const key=batch.name+'||'+day;
+      const ds=slots[key]||[];
+      const isSun=day==='Sun';
+      html+=`<td class="${day==='Sat'?'sat':isSun?'sun':''}"
+        ${!isSun?`ondragover="event.preventDefault();this.classList.add('drop-target')"
+        ondragleave="this.classList.remove('drop-target')"
+        ondrop="ttDrop(event,'${batch.name}','${day}');this.classList.remove('drop-target')"`:''}>`;
+      if(isSun&&batch.wing!=='nxtair'){html+='<span style="color:#aaa;font-size:.65rem">OFF</span>';}
+      else{
+        ds.forEach((sl,idx)=>{
+          const isMerged=sl.merged&&sl.merged!=='';
+          html+=`<div class="slot ${sc(sl.subj)}" draggable="true"
+            ondragstart="ttDragStart(event,'${batch.name}','${day}',${idx})"
+            ondragend="this.style.opacity='1'"
+            onclick="openSlotModal('${batch.name}','${day}',${idx})">
+            <button class="del" onclick="event.stopPropagation();deleteSlot('${batch.name}','${day}',${idx})">×</button>
+            <button class="cpbtn" onclick="event.stopPropagation();copySlotFn('${batch.name}','${day}',${idx})" title="Copy">⎘</button>
+            <div class="sn">${sl.subj}${isMerged?'<span style="font-size:.58rem;background:#6366f1;color:#fff;padding:0 3px;border-radius:2px;margin-left:2px;">M</span>':''}</div>
+            <div class="st">${sl.start}–${sl.end}${sl.room?' · '+sl.room:''}</div>
+            ${sl.teacher?`<div class="sr">${sl.teacher}</div>`:''}
+          </div>`;
+        });
+        html+=`<button class="add-btn" onclick="openSlotModal('${batch.name}','${day}',null)">+ Add</button>`;
+        html+=`<button class="paste-btn" onclick="pasteSlot('${batch.name}','${day}')">📋 Paste</button>`;
+      }
+      html+='</td>';
+    });
+    html+='</tr>';
+  });
+  tbl.innerHTML=html+'</tbody>';
+}
+
+function setFilter(f,btn){
+  activeFilter=f;
+  document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('on'));
+  if(btn){ document.querySelectorAll('.sidebar .nav button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+  renderBatchView();
+}
+
+function renderTeacherView(){
+  const sel=document.getElementById('tt-teacher-sel');
+  if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML=teachers.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
+  if(cur) sel.value=cur;
+  const tname=sel.value;
+  const out=document.getElementById('tt-teacher-view');
+  if(!out||!tname) return;
+
+  let html='<div style="overflow-x:auto"><table class="tt"><thead><tr><th class="batch-col">Batch</th>';
+  ALL_DAYS.forEach(d=>html+=`<th${d==='Sat'?' style="background:#d97706"':d==='Sun'?' style="background:#6d28d9"':''}>${d}</th>`);
+  html+='</tr></thead><tbody>';
+
+  BATCHES.forEach(batch=>{
+    const hasAny=ALL_DAYS.some(d=>(slots[batch.name+'||'+d]||[]).some(s=>s.teacher===tname));
+    if(!hasAny) return;
+    html+=`<tr><td class="lbl-col">${batch.name}</td>`;
+    ALL_DAYS.forEach(day=>{
+      const isSun=day==='Sun';
+      const isNXT=batch.wing==='nxtair';
+      if(isSun&&!isNXT){html+=`<td class="sun"><span style="color:#aaa;font-size:.65rem">OFF</span></td>`;return;}
+      const ds=(slots[batch.name+'||'+day]||[]).filter(s=>s.teacher===tname);
+      html+=`<td${day==='Sat'?' class="sat"':day==='Sun'?' style="background:#f5f0ff"':''}>`;
+      ds.forEach((sl,i)=>{
+        const realIdx=(slots[batch.name+'||'+day]||[]).findIndex(s=>s===sl);
+        html+=`<div class="slot ${sc(sl.subj)}" onclick="openSlotModal('${batch.name}','${day}',${realIdx})">
+          <div class="sn">${sl.subj}</div><div class="st">${sl.start}–${sl.end}${sl.room?' · '+sl.room:''}</div>
+        </div>`;
+      });
+      if(!ds.length) html+='<span style="color:#ddd;font-size:.65rem">—</span>';
+      html+='</td>';
+    });
+    html+='</tr>';
+  });
+  out.innerHTML=html+'</tbody></table></div>';
+}
+
+
+function renderRoomView(){
+  const out=document.getElementById('tt-room-view');
+  if(!out) return;
+  const roomNames=rooms.map(r=>r.name);
+
+  let html='<div style="overflow-x:auto"><table class="tt"><thead><tr><th class="batch-col">Room</th>';
+  ALL_DAYS.forEach(d=>html+=`<th${d==='Sat'?' style="background:#d97706"':d==='Sun'?' style="background:#6d28d9"':''}>${d}</th>`);
+  html+='</tr></thead><tbody>';
+
+  roomNames.forEach(room=>{
+    html+=`<tr><td class="lbl-col">${room}</td>`;
+    ALL_DAYS.forEach(day=>{
+      const found=[];
+      const seen=new Set();
+      BATCHES.forEach(batch=>{
+        (slots[batch.name+'||'+day]||[]).forEach((sl,idx)=>{
+          if(sl.room!==room) return;
+          const gk=sl.merged?[batch.name,sl.merged].sort().join('|'):batch.name;
+          if(seen.has(gk+'|'+sl.start)) return;
+          seen.add(gk+'|'+sl.start);
+          const mergeLabel=sl.merged?batch.name+' + '+sl.merged:batch.name;
+          found.push({...sl,batchName:batch.name,slotIdx:idx,mergeLabel});
+        });
+      });
+      found.sort((a,b)=>a.start.localeCompare(b.start));
+      html+=`<td${day==='Sat'?' class="sat"':day==='Sun'?' style="background:#f5f0ff"':''}>`;
+      if(!found.length) html+=`<div style="text-align:center;color:#d1d5db;font-size:.65rem;padding:4px">free</div>`;
+      else found.forEach(sl=>{
+        html+=`<div class="slot ${sc(sl.subj)}" onclick="openSlotModal('${sl.batchName}','${day}',${sl.slotIdx})">
+          <div class="sn">${sl.subj}</div>
+          <div class="st">${sl.start}–${sl.end}</div>
+          <div class="sr">${sl.mergeLabel}</div>
+        </div>`;
+      });
+      html+='</td>';
+    });
+    html+='</tr>';
+  });
+  out.innerHTML=html+'</tbody></table></div>';
+}
+
+
+function openSlotModal(batchName,day,idx){
+  slotModalCtx={batchName,day,idx};
+  const key=batchName+'||'+day;
+  const sl=idx!==null?(slots[key]||[])[idx]:null;
+  document.getElementById('slot-modal-title').textContent=(sl?'Edit':'Add')+' Slot — '+batchName+' / '+day;
+  document.getElementById('sm-subj').value=sl?sl.subj:'Maths';
+  document.getElementById('sm-start').value=sl?sl.start:'16:30';
+  document.getElementById('sm-end').value=sl?sl.end:'17:45';
+  document.getElementById('sm-room').value=sl?sl.room||'':'';
+  document.getElementById('sm-notes').value=sl?sl.notes||'':'';
+
+  // Populate teacher select
+  const ts=document.getElementById('sm-teacher');
+  ts.innerHTML='<option value="">— none —</option>'+teachers.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
+  if(sl&&sl.teacher) ts.value=sl.teacher;
+  else smAutoTeacher();
+
+  // Merge select
+  const ms=document.getElementById('sm-merge');
+  ms.innerHTML='<option value="">— none —</option>'+BATCHES.filter(b=>b.name!==batchName).map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  if(sl&&sl.merged) ms.value=sl.merged;
+
+  document.getElementById('slot-modal').style.display='flex';
+}
+
+function smAutoTeacher(){
+  const subj=document.getElementById('sm-subj').value;
+  const t=teachers.find(t=>t.subjects.some(s=>s===subj||s.includes(subj.split('/')[0].trim())));
+  if(t) document.getElementById('sm-teacher').value=t.name;
+}
+
+function saveSlotModal(){
+  const {batchName,day,idx}=slotModalCtx;
+  const key=batchName+'||'+day;
+  if(!slots[key]) slots[key]=[];
+  const slotData={
+    subj:document.getElementById('sm-subj').value,
+    teacher:document.getElementById('sm-teacher').value,
+    start:document.getElementById('sm-start').value,
+    end:document.getElementById('sm-end').value,
+    room:document.getElementById('sm-room').value,
+    merged:document.getElementById('sm-merge').value,
+    notes:document.getElementById('sm-notes').value,
+    isTest:document.getElementById('sm-subj').value==='TEST'
+  };
+  if(idx!==null) slots[key][idx]=slotData;
+  else slots[key].push(slotData);
+  slots[key].sort((a,b)=>a.start.localeCompare(b.start));
+  closeSlotModal();
+  renderBatchView();
+  updateStats();
+  debouncedSave();
+}
+
+function closeSlotModal(){document.getElementById('slot-modal').style.display='none';}
+
+function deleteSlot(batchName,day,idx){
+  const key=batchName+'||'+day;
+  if(slots[key]) slots[key].splice(idx,1);
+  renderBatchView();updateStats();
+  debouncedSave();
+}
+
+// ═══════════════════════════════ COPY/PASTE ═══════════════════════════════
+function copySlotFn(batchName,day,idx){
+  const key=batchName+'||'+day;
+  const sl=(slots[key]||[])[idx];
+  if(!sl) return;
+  copiedSlot={...sl};
+  document.getElementById('copy-bar').classList.add('show');
+  document.getElementById('copy-label').textContent=sl.subj+' · '+sl.start+'–'+sl.end+(sl.teacher?' · '+sl.teacher:'');
+  document.querySelectorAll('.paste-btn').forEach(b=>b.style.display='block');
+  document.querySelectorAll('.add-btn').forEach(b=>b.style.display='none');
+}
+
+function pasteSlot(batchName,day){
+  if(!copiedSlot){alert('Copy a slot first!');return;}
+  if(day==='Sun'){alert('Cannot paste on Sunday!');return;}
+  const key=batchName+'||'+day;
+  if(!slots[key]) slots[key]=[];
+  slots[key].push({...copiedSlot});
+  slots[key].sort((a,b)=>a.start.localeCompare(b.start));
+  renderBatchView();
+  // flash confirmation
+  const bar=document.getElementById('copy-bar');
+  bar.style.background='#166534';
+  setTimeout(()=>bar.style.background='',500);
+}
+
+function cancelCopy(){
+  copiedSlot=null;
+  document.getElementById('copy-bar').classList.remove('show');
+  document.querySelectorAll('.paste-btn').forEach(b=>b.style.display='none');
+  document.querySelectorAll('.add-btn').forEach(b=>b.style.display='');
+}
+
+// ═══════════════════════════════ DRAG & DROP (Timetable) ═══════════════════════════════
+let ttDragging=null;
+function ttDragStart(event,batchName,day,idx){
+  const key=batchName+'||'+day;
+  const sl=(slots[key]||[])[idx];
+  if(!sl) return;
+  ttDragging={batchName,day,idx,sl:{...sl}};
+  event.dataTransfer.effectAllowed='move';
+  event.target.style.opacity='0.4';
+}
+function ttDrop(event,targetBatch,targetDay){
+  event.preventDefault();
+  if(!ttDragging) return;
+  const {batchName:sb,day:sd,idx:si,sl}=ttDragging;
+  if(sb===targetBatch&&sd===targetDay){ttDragging=null;return;}
+  const tk=targetBatch+'||'+targetDay;
+  const sk=sb+'||'+sd;
+  if(!slots[tk]) slots[tk]=[];
+  slots[tk].push({...sl});
+  slots[tk].sort((a,b)=>a.start.localeCompare(b.start));
+  if(slots[sk]) slots[sk].splice(si,1);
+  ttDragging=null;
+  renderBatchView();
+}
+
+// ═══════════════════════════════ ROOM PLANNER ═══════════════════════════════
+function buildRPGroups(day,wing){
+  let fb=BATCHES;
+  if(wing==='senior') fb=BATCHES.filter(b=>['11th','12th'].includes(b.cls)&&b.wing!=='nxtair');
+  if(wing==='junior') fb=BATCHES.filter(b=>['7th','8th','9th','10th'].includes(b.cls)&&b.wing!=='nxtair');
+  if(wing==='cbse') fb=BATCHES.filter(b=>b.wing!=='nxtair');
+  if(wing==='nxtair') fb=BATCHES.filter(b=>b.wing==='nxtair');
+
+  const all=[];
+  fb.forEach(batch=>{
+    (slots[batch.name+'||'+day]||[]).forEach((sl,idx)=>all.push({...sl,batchName:batch.name,slotIdx:idx,batchWing:batch.wing}));
+  });
+
+  const seen=new Set();
+  const groups=[];
+  all.forEach(sl=>{
+    const uid=sl.batchName+'|'+sl.start+'|'+sl.subj;
+    if(seen.has(uid)) return;
+    seen.add(uid);
+    const grpSlots=[sl];
+    if(sl.merged){
+      const p=all.find(s=>s.batchName===sl.merged&&s.start===sl.start&&s.subj===sl.subj&&!seen.has(s.batchName+'|'+s.start+'|'+s.subj));
+      if(p){seen.add(p.batchName+'|'+p.start+'|'+p.subj);grpSlots.push(p);}
+    }
+    const isMerged=grpSlots.length>1;
+    groups.push({
+      id:sl.batchName.replace(/\s/g,'_')+'_'+sl.start.replace(':','')+'_'+sl.subj.replace(/\s/g,'_'),
+      batches:grpSlots.map(s=>s.batchName),
+      subj:sl.subj,start:sl.start,end:sl.end,
+      teacher:sl.teacher||'',room:sl.room||'',
+      isTest:sl.isTest||false,isMerged,slots:grpSlots
+    });
+  });
+  groups.sort((a,b)=>a.start.localeCompare(b.start));
+  return groups;
+}
+
+function rpGroupHtml(grp,draggable,showX){
+  const bLabel=grp.batches.join(' + ');
+  return `<div class="slot ${sc(grp.subj)}" style="${grp.isMerged?'border:2px solid #6366f1;':''};${draggable?'cursor:grab':'cursor:default'}"
+    ondragover="event.preventDefault();event.stopPropagation();this.closest('.room-card').style.borderColor='#6366f1';this.closest('.room-card').style.background='#eff6ff'"
+    ondrop="event.preventDefault();event.stopPropagation();const rc=this.closest('.room-card');if(rc){rc.style.borderColor='';rc.style.background='';const rname=rc.dataset.room;if(rname)rpDropToRoom(event,rname);}"
+    ${draggable?`draggable="true" ondragstart="rpDragStart(event,'${grp.id}')" ondragend="this.style.opacity='1'"`:''}>
+    ${showX?`<button class="del" style="display:flex;pointer-events:auto" onclick="event.stopPropagation();rpRemoveRoom('${grp.id}')">×</button>`:''}
+    <div class="sn">${grp.subj}${grp.isMerged?'<span style="font-size:.55rem;background:#6366f1;color:#fff;padding:0 3px;border-radius:2px;margin-left:2px;">M</span>':''}</div>
+    <div class="st">${grp.start}–${grp.end}</div>
+    <div class="sr">${bLabel}</div>
+    ${grp.teacher?`<div class="sr">${grp.teacher}</div>`:''}
+  </div>`;
+}
+
+function renderRoomPlanner(){
+  const day=document.getElementById('rp-day').value;
+  const wing=document.getElementById('rp-wing').value;
+  const roomNames=rooms.map(r=>r.name);
+  const groups=buildRPGroups(day,wing);
+  window._rpGroups=groups;
+  window._rpDay=day;
+
+  const roomMap={};
+  roomNames.forEach(r=>roomMap[r]=[]);
+  const unassigned=[];
+  const shortage=[];
+
+  groups.forEach(grp=>{
+    if(grp.room&&roomNames.includes(grp.room)){
+      if(roomMap[grp.room].length<4) roomMap[grp.room].push(grp);
+      else shortage.push(grp);
+    } else if(grp.room==='SHORTAGE'||!grp.room){
+      unassigned.push(grp);
+    } else unassigned.push(grp);
+  });
+
+  // Unassigned
+  document.getElementById('rp-unassigned').innerHTML=unassigned.length
+    ?unassigned.map(g=>rpGroupHtml(g,true,false)).join('')
+    :'<div style="color:#aaa;font-size:.72rem;text-align:center;padding:8px">✅ All assigned</div>';
+
+  // Shortage
+  document.getElementById('rp-shortage').innerHTML=shortage.length
+    ?shortage.map(g=>`<div style="font-size:.72rem;color:#dc2626;padding:2px 0;border-bottom:1px solid #fecaca">${g.subj} — ${g.batches.join('+')} (${g.start})</div>`).join('')
+    :'<div style="color:#16a34a;font-size:.72rem;text-align:center;padding:8px">✅ No shortage</div>';
+
+  // Rooms
+  document.getElementById('rp-grid').innerHTML=roomNames.map(room=>{
+    const grpList=roomMap[room]||[];
+    const rInfo=rooms.find(r=>r.name===room);
+    const isFull=grpList.length>=4;
+    // Check if this room has a conflict (same time, different non-merged batches)
+    let hasConflict=false;
+    for(let i=0;i<grpList.length;i++){
+      for(let j=i+1;j<grpList.length;j++){
+        const ga=grpList[i],gb=grpList[j];
+        const merged=ga.batches.some(b=>gb.batches.includes(b))||ga.slots.some(s=>gb.batches.includes(s.merged))||gb.slots.some(s=>ga.batches.includes(s.merged));
+        if(!merged&&t2m(ga.start)<t2m(gb.end)&&t2m(ga.end)>t2m(gb.start)&&t2m(ga.end)!==t2m(gb.start)&&t2m(gb.end)!==t2m(ga.start)){
+          hasConflict=true;
+        }
+      }
+    }
+    return `<div class="room-card${isFull?' full':''}" data-room="${room}" style="${hasConflict?'border-color:#dc2626;background:#fef2f2;':''}"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="rpDropToRoom(event,'${room}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-weight:700;font-size:.8rem">${room}</span>
+        <span style="font-size:.65rem;color:${isFull?'#ea580c':'#94a3b8'};font-weight:600">${grpList.length}/4${isFull?' FULL':''}</span>
+      </div>
+      ${rInfo&&rInfo.notes?`<div style="font-size:.6rem;color:#94a3b8;margin-bottom:4px">${rInfo.notes}</div>`:''}
+      ${(()=>{
+        if(!rInfo||!window.batchStrength) return '';
+        const warns=grpList.filter(g=>{
+          const str=g.batches.reduce((s,bn)=>s+(window.batchStrength[bn]||35),0);
+          return str>rInfo.cap;
+        }).map(g=>{
+          const str=g.batches.reduce((s,bn)=>s+(window.batchStrength[bn]||35),0);
+          return `<div style="font-size:.62rem;color:#dc2626;font-weight:700">⚠ ${g.subj} ${g.start}: ${str} > cap ${rInfo.cap}</div>`;
+        });
+        return warns.join('');
+      })()}
+      ${grpList.map(g=>rpGroupHtml(g,true,true)).join('')}
+      ${!isFull?'<div style="text-align:center;color:#cbd5e1;font-size:.62rem;padding:3px 0">drag here</div>':''}
+    </div>`;
+  }).join('');
+}
+
+function rpDragStart(event,gid){
+  draggedRPGroup=gid;
+  event.dataTransfer.effectAllowed='move';
+  try{ event.dataTransfer.setData('text/plain',gid); }catch(e){}
+  event.target.closest('.slot').style.opacity='0.4';
+}
+
+function rpDropToRoom(event,room){
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const gid=event.dataTransfer.getData('text/plain')||draggedRPGroup;
+  const day=window._rpDay||document.getElementById('rp-day').value;
+  const grp=(window._rpGroups||[]).find(g=>g.id===gid);
+  if(!grp) return;
+
+  // Count unique time-groups in this room from ACTUAL slots{} (not stale _rpGroups)
+  const actualInRoom=new Set();
+  BATCHES.forEach(b=>{
+    (slots[b.name+'||'+day]||[]).forEach(sl=>{
+      if(sl.room===room){
+        const gk=sl.merged?[b.name,sl.merged].sort().join('|'):b.name+'|'+sl.start;
+        actualInRoom.add(gk+'|'+sl.start);
+      }
+    });
+  });
+  // Don't count current group's own slots
+  const grpKey=grp.batches.sort().join('|')+'|'+grp.start;
+  const adjustedCount=[...actualInRoom].filter(k=>!k.startsWith(grp.batches[0]+'|'+grp.start)&&!k.startsWith(grp.start)).length;
+  if(actualInRoom.size>=4&&!actualInRoom.has(grpKey)){
+    alert(room+' already has 4 slots!'); return;
+  }
+
+  // Assign room to ALL slots in this group (match by batchName+subj+start)
+  grp.slots.forEach(sl=>{
+    const key=sl.batchName+'||'+day;
+    if(!slots[key]) return;
+    const target=slots[key].find(s=>s.subj===sl.subj&&s.start===sl.start);
+    if(target) target.room=room;
+  });
+
+  // Also sync any OTHER merged partners that may not be in grp.slots
+  grp.batches.forEach(bn=>{
+    const key=bn+'||'+day;
+    (slots[key]||[]).filter(s=>s.subj===grp.subj&&s.start===grp.start).forEach(s=>{
+      s.room=room;
+      // Sync partner
+      if(s.merged){
+        const pk=s.merged+'||'+day;
+        const partner=(slots[pk]||[]).find(p=>p.subj===s.subj&&p.start===s.start);
+        if(partner) partner.room=room;
+      }
+    });
+  });
+
+  draggedRPGroup=null;
+  syncMergedRooms();
+  renderRoomPlanner();
+  if(document.getElementById('page-free').classList.contains('on')) renderFreeSlots();
+  debouncedSave();
+}
+
+function rpDropUnassign(event){
+  event.preventDefault();
+  event.currentTarget.style.borderColor='#cbd5e1';
+  const gid=event.dataTransfer.getData('text/plain')||draggedRPGroup;
+  const day=window._rpDay||document.getElementById('rp-day').value;
+  const grp=(window._rpGroups||[]).find(g=>g.id===gid);
+  if(!grp) return;
+  grp.slots.forEach(sl=>{
+    const key=sl.batchName+'||'+day;
+    if(!slots[key]) return;
+    const target=slots[key].find(s=>s.subj===sl.subj&&s.start===sl.start);
+    if(target) target.room='';
+    // Also clear merged partner
+    if(sl.merged){
+      const pk=sl.merged+'||'+day;
+      const partner=(slots[pk]||[]).find(p=>p.subj===sl.subj&&p.start===sl.start);
+      if(partner) partner.room='';
+    }
+  });
+  draggedRPGroup=null;
+  syncMergedRooms();
+  renderRoomPlanner();
+  if(document.getElementById('page-free').classList.contains('on')) renderFreeSlots();
+}
+
+function rpRemoveRoom(gid){
+  const day=window._rpDay||document.getElementById('rp-day').value;
+  const grp=(window._rpGroups||[]).find(g=>g.id===gid);
+  if(!grp) return;
+  grp.slots.forEach(sl=>{
+    const key=sl.batchName+'||'+day;
+    if(!slots[key]) return;
+    const target=slots[key].find(s=>s.subj===sl.subj&&s.start===sl.start);
+    if(target) target.room='';
+  });
+  renderRoomPlanner();
+}
+
+function syncMergedRooms(){
+  // Ensure merged batches always have same room
+  let fixed=0;
+  BATCHES.forEach(batch=>{
+    WORK_DAYS.forEach(day=>{
+      const key=batch.name+'||'+day;
+      (slots[key]||[]).forEach(sl=>{
+        if(!sl.merged||!sl.room||sl.room==='SHORTAGE') return;
+        // Find partner slot and give it same room
+        const pkey=sl.merged+'||'+day;
+        const partner=(slots[pkey]||[]).find(s=>s.subj===sl.subj&&s.start===sl.start);
+        if(partner&&partner.room!==sl.room){
+          partner.room=sl.room;
+          fixed++;
+        }
+      });
+    });
+  });
+  return fixed;
+}
+
+function autoAssignRooms(){
+  const day=document.getElementById('rp-day').value;
+  const wing=document.getElementById('rp-wing').value;
+  const roomNames=rooms.map(r=>r.name);
+  const groups=buildRPGroups(day,wing);
+
+  // Build occupancy from already-assigned groups
+  const occ={};
+  roomNames.forEach(r=>occ[r]=[]);
+  groups.filter(g=>g.room&&roomNames.includes(g.room)).forEach(g=>{
+    if(occ[g.room].length<4) occ[g.room].push(g);
+  });
+
+  // Assign unassigned greedily
+  const batchPref={};
+  groups.filter(g=>!g.room||!roomNames.includes(g.room)).sort((a,b)=>a.start.localeCompare(b.start)).forEach(grp=>{
+    // Check if merged partner has room
+    let room=null;
+    if(grp.isMerged){
+      const partner=groups.find(g=>g.id!==grp.id&&g.batches.some(b=>grp.batches.includes(b))&&g.room);
+      if(partner) room=partner.room;
+    }
+    if(!room&&batchPref[grp.batches[0]]) room=batchPref[grp.batches[0]];
+    if(!room){
+      room=roomNames.find(r=>{
+        if(occ[r].length>=4) return false;
+        // Check time conflict
+        if(occ[r].some(g2=>t2m(g2.start)<t2m(grp.end)&&t2m(g2.end)>t2m(grp.start))) return false;
+        // Check room capacity vs batch strength
+        const rInfo=rooms.find(ri=>ri.name===r);
+        if(rInfo&&window.batchStrength){
+          // Per-slot capacity: only count batches in THIS slot
+          const slotStr=grp.batches.reduce((sum,bn)=>sum+(window.batchStrength[bn]||35),0);
+          if(slotStr>rInfo.cap) return false;
+        }
+        return true;
+      });
+    }
+    if(room){
+      if(!occ[room]) occ[room]=[];
+      occ[room].push(grp);
+      if(!batchPref[grp.batches[0]]) batchPref[grp.batches[0]]=room;
+      grp.slots.forEach(sl=>{
+        const key=sl.batchName+'||'+day;
+        if(!slots[key]) return;
+        const target=slots[key].find(s=>s.subj===sl.subj&&s.start===sl.start);
+        if(target) target.room=room;
+      });
+    }
+  });
+  renderRoomPlanner();
+  if(document.getElementById('page-free').classList.contains('on')) renderFreeSlots();
+  alert('Auto-assign done! Shortage rooms shown in red panel.');
+}
+
+// ═══════════════════════════════ FREE SLOTS ═══════════════════════════════
+let freeDay='Mon';
+function initFreeSlots(){
+  const centre=document.getElementById('free-centre')?document.getElementById('free-centre').value:'cbse';
+  const mode=document.getElementById('free-mode')?document.getElementById('free-mode').value:'day';
+  const dc=document.getElementById('free-day-btns');
+  const isNXT=centre==='nxtair';
+  const days=isNXT?ALL_DAYS:WORK_DAYS;
+  if(dc){
+    dc.style.display=mode==='weekly'?'none':'flex';
+    dc.innerHTML=days.map((d,i)=>`<button class="day-btn${i===0?' on':''}" onclick="setFreeDay('${d}',this)">${d}</button>`).join('');
+  }
+  freeDay=days[0];
+}
+
+function setFreeDay(day,btn){
+  freeDay=day;
+  document.querySelectorAll('#free-day-btns .day-btn').forEach(b=>b.classList.remove('on'));
+  if(btn){ document.querySelectorAll('.sidebar .nav button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+  renderFreeSlots();
+}
+
+function renderFreeSlots(){
+  const el=document.getElementById('free-output');
+  if(!el) return;
+  const mode=document.getElementById('free-mode')?document.getElementById('free-mode').value:'day';
+  const centre=document.getElementById('free-centre')?document.getElementById('free-centre').value:'cbse';
+  const daySel=document.getElementById('free-day-btns');
+  if(daySel) daySel.style.display=mode==='weekly'?'none':'flex';
+
+  if(mode==='weekly') renderFreeWeekly(el,centre);
+  else renderFreeDay(el,centre,freeDay);
+}
+
+function getFilteredRooms(centre){
+  return rooms.filter(r=>centre==='all'||(centre==='cbse'&&r.wing==='CBSE')||(centre==='nxtair'&&r.wing==='NXT-AIR'));
+}
+function getFilteredBatches(centre){
+  return BATCHES.filter(b=>centre==='all'||(centre==='cbse'&&b.wing!=='nxtair')||(centre==='nxtair'&&b.wing==='nxtair'));
+}
+
+function getRoomOccupancy(day, filtBatches, filtRooms){
+  const roomMap={};
+  filtRooms.forEach(r=>roomMap[r.name]=[]);
+  const busyTeachers=new Set();
+  filtBatches.forEach(batch=>{
+    (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+      if(sl.room&&roomMap[sl.room]){
+        const gk=sl.merged?[batch.name,sl.merged].sort().join('|'):batch.name;
+        if(!roomMap[sl.room].find(x=>x.gk===gk&&x.start===sl.start)){
+          roomMap[sl.room].push({gk,subj:sl.subj,start:sl.start,end:sl.end,batch:batch.name,merged:sl.merged,teacher:sl.teacher,isTest:sl.isTest});
+        }
+      }
+      if(sl.teacher) busyTeachers.add(sl.teacher);
+    });
+  });
+  return {roomMap,busyTeachers};
+}
+
+function renderFreeDay(el, centre, day){
+  const filtRooms=getFilteredRooms(centre);
+  const filtBatches=getFilteredBatches(centre);
+  const dayTeachers=teachers.filter(t=>(t.days||[]).includes(day));
+
+  // Time boundaries
+  const isNXT=centre==='nxtair'||(day==='Sun');
+  const bounds=new Set([isNXT?9*60:16*60, 21*60]);
+  filtBatches.forEach(b=>(slots[b.name+'||'+day]||[]).forEach(sl=>{bounds.add(t2m(sl.start));bounds.add(t2m(sl.end));}));
+  const times=[...bounds].sort((a,b)=>a-b);
+  const intervals=[];
+  for(let i=0;i<times.length-1;i++) intervals.push({s:times[i],e:times[i+1]});
+
+  // Stats
+  const totalRooms=filtRooms.length;
+  const peakNeeded=Math.max(0,...intervals.map(({s,e})=>{
+    const g=new Set();
+    filtBatches.forEach(b=>(slots[b.name+'||'+day]||[]).forEach(sl=>{
+      if(t2m(sl.start)<=s&&t2m(sl.end)>=e) g.add(sl.merged?[b.name,sl.merged].sort().join('|'):b.name);
+    }));
+    return g.size;
+  }));
+  const shortage=Math.max(0,peakNeeded-totalRooms);
+
+  // Summary cards
+  let html=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border)">
+    <div style="padding:14px 16px;border-right:1px solid var(--border)">
+      <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Rooms Available</div>
+      <div style="font-size:1.8rem;font-weight:800;color:#1e40af;margin:4px 0">${totalRooms}</div>
+      <div style="font-size:.72rem;color:var(--muted)">Peak need: ${peakNeeded}</div>
+    </div>
+    <div style="padding:14px 16px;border-right:1px solid var(--border)">
+      <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Room Status</div>
+      <div style="font-size:1.8rem;font-weight:800;color:${shortage?'#dc2626':'#16a34a'};margin:4px 0">${shortage?'⚠ '+shortage+' Short':'✅ OK'}</div>
+      <div style="font-size:.72rem;color:var(--muted)">${shortage?shortage+' rooms short at peak':'All rooms sufficient'}</div>
+    </div>
+    <div style="padding:14px 16px;border-right:1px solid var(--border)">
+      <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Teachers Today</div>
+      <div style="font-size:1.8rem;font-weight:800;color:#7c3aed;margin:4px 0">${dayTeachers.length}</div>
+      <div style="font-size:.72rem;color:var(--muted)">Available today</div>
+    </div>
+    <div style="padding:14px 16px">
+      <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Day</div>
+      <div style="font-size:1.8rem;font-weight:800;color:#1e293b;margin:4px 0">${day}</div>
+      <div style="font-size:.72rem;color:var(--muted)">${centre.toUpperCase()} Centre</div>
+    </div>
+  </div>`;
+
+  // Two column layout: Rooms timeline | Teachers
+  html+=`<div style="display:grid;grid-template-columns:1fr 280px;gap:0;min-height:400px">`;
+
+  // Left: Room timeline
+  html+=`<div style="border-right:1px solid var(--border);overflow-x:auto">
+    <div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--border);font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">🚪 Room Availability Timeline</div>
+    <table style="width:100%;border-collapse:collapse;font-size:.72rem">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 10px;border-bottom:1px solid var(--border);min-width:100px;text-align:left">Time</th>
+        ${filtRooms.map(r=>`<th style="padding:7px 8px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);min-width:80px;text-align:center">${r.name}<div style="font-weight:400;font-size:.6rem;color:#94a3b8">${r.cap} cap</div></th>`).join('')}
+      </tr></thead><tbody>`;
+
+  const SUBJ_COLORS={Maths:'#ede9fe,#4c1d95',Physics:'#fee2e2,#7f1d1d',Chemistry:'#fce7f3,#831843',Biology:'#dcfce7,#14532d',Science:'#d1fae5,#064e3b',English:'#dbeafe,#1e3a8a',SST:'#fef3c7,#78350f',Accounts:'#dbeafe,#1e3a8a',Economics:'#f3f4f6,#374151',BST:'#fef9c3,#713f12','Physics / Chemistry':'#fee2e2,#7f1d1d','Maths (shared)':'#ede9fe,#4c1d95',TEST:'#fef2f2,#991b1b'};
+
+  intervals.forEach(({s,e})=>{
+    const allGrps=new Set();
+    filtBatches.forEach(b=>(slots[b.name+'||'+day]||[]).forEach(sl=>{
+      if(t2m(sl.start)<=s&&t2m(sl.end)>=e) allGrps.add(sl.merged?[b.name,sl.merged].sort().join('|'):b.name);
+    }));
+    const needed=allGrps.size;
+    const slotShort=Math.max(0,needed-totalRooms);
+    const rowBg=slotShort>0?'#fef2f2':needed===0?'#f9fafb':'';
+
+    html+=`<tr style="background:${rowBg}">
+      <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;font-weight:600;white-space:nowrap">
+        ${m2t(s)}<span style="color:#94a3b8;font-size:.65rem;display:block">${m2t(e)}</span>
+        ${slotShort?`<span style="font-size:.6rem;background:#dc2626;color:#fff;padding:1px 4px;border-radius:3px">⚠ ${slotShort} short</span>`:''}
+      </td>`;
+
+    filtRooms.forEach(room=>{
+      // Find occupants
+      const occ=[];
+      const seen=new Set();
+      filtBatches.forEach(batch=>{
+        (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+          if(sl.room!==room.name) return;
+          if(t2m(sl.start)>s||t2m(sl.end)<e) return;
+          const gk=sl.merged?[batch.name,sl.merged].sort().join('|'):batch.name;
+          if(seen.has(gk)) return;
+          seen.add(gk);
+          occ.push({...sl,batchName:batch.name});
+        });
+      });
+
+      if(!occ.length){
+        html+=`<td style="border-bottom:1px solid #f1f5f9;border-left:1px solid var(--border);background:#f0fdf4;text-align:center;color:#16a34a;font-weight:700;font-size:.68rem">FREE</td>`;
+      } else {
+        const o=occ[0];
+        const [bg,fg]=(SUBJ_COLORS[o.subj]||'#f3f4f6,#374151').split(',');
+        const batchLabel=o.merged?o.batchName+'+'+o.merged:o.batchName;
+        html+=`<td style="border-bottom:1px solid #f1f5f9;border-left:1px solid var(--border);padding:4px 6px;background:${bg}">
+          <div style="font-weight:700;font-size:.68rem;color:${fg}">${o.subj}${o.isTest?' 📝':''}</div>
+          <div style="font-size:.6rem;color:${fg};opacity:.8">${batchLabel}</div>
+          ${o.teacher?`<div style="font-size:.58rem;color:${fg};opacity:.7">${o.teacher}</div>`:''}
+        </td>`;
+      }
+    });
+    html+='</tr>';
+  });
+
+  html+=`</tbody></table></div>`;
+
+  // Right: Teacher status
+  html+=`<div>
+    <div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--border);font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">👩‍🏫 Teacher Status</div>`;
+
+  teachers.forEach(t=>{
+    if(!(t.days||[]).includes(day)) return;
+    const tSlots=[];
+    filtBatches.forEach(b=>(slots[b.name+'||'+day]||[]).forEach(sl=>{
+      if(sl.teacher===t.name&&!sl.isTest) tSlots.push({...sl,batch:b.name});
+    }));
+    tSlots.sort((a,b)=>a.start.localeCompare(b.start));
+    const isFree=tSlots.length===0;
+    const hrs=tSlots.reduce((s,sl)=>(t2m(sl.end)-t2m(sl.start))/60+s,0);
+
+    html+=`<div style="padding:8px 14px;border-bottom:1px solid #f1f5f9;${isFree?'background:#f0fdf4':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700;font-size:.78rem">${t.name}</div>
+        <div style="font-size:.65rem;${isFree?'color:#16a34a;font-weight:700':'color:#94a3b8'}">
+          ${isFree?'✅ FREE':hrs.toFixed(1)+'h'}
+        </div>
+      </div>
+      <div style="font-size:.65rem;color:#94a3b8;margin-top:1px">${t.subjects.join(', ')}</div>
+      ${tSlots.length?`<div style="margin-top:4px">${tSlots.map(sl=>`<div style="font-size:.63rem;background:#f1f5f9;border-radius:3px;padding:2px 5px;margin-top:2px;display:flex;justify-content:space-between"><span>${sl.subj}</span><span style="color:#94a3b8">${sl.start}–${sl.end} · ${sl.batch}</span></div>`).join('')}</div>`:''}
+    </div>`;
+  });
+  html+=`</div></div>`;
+
+  el.innerHTML=html;
+}
+
+function renderFreeWeekly(el, centre){
+  const filtRooms=getFilteredRooms(centre);
+  const filtBatches=getFilteredBatches(centre);
+  const isNXT=centre==='nxtair';
+  const days=isNXT?ALL_DAYS:WORK_DAYS;
+
+  // Summary grid: rooms × days
+  let html=`<div style="padding:12px 16px;background:#f8fafc;border-bottom:1px solid var(--border)">
+    <div style="font-size:.82rem;font-weight:700;margin-bottom:2px">Weekly Availability Overview</div>
+    <div style="font-size:.72rem;color:var(--muted)">Green = free slots, numbers = classes scheduled</div>
+  </div>`;
+
+  // Rooms weekly
+  html+=`<div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🚪 Rooms — Daily Class Count</div>
+    <div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:.75rem;width:100%">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 10px;border:1px solid var(--border);text-align:left">Room</th>
+        ${days.map(d=>`<th style="padding:7px 10px;border:1px solid var(--border);text-align:center;${d==='Sat'?'background:#fff7ed':d==='Sun'?'background:#f5f0ff':''}">${d}</th>`).join('')}
+        <th style="padding:7px 10px;border:1px solid var(--border);text-align:center;background:#f0f9ff">Total</th>
+      </tr></thead><tbody>`;
+
+  filtRooms.forEach(room=>{
+    let total=0;
+    html+=`<tr><td style="padding:6px 10px;border:1px solid var(--border);font-weight:600">${room.name}<div style="font-size:.62rem;color:#94a3b8">Cap: ${room.cap}</div></td>`;
+    days.forEach(day=>{
+      const grps=new Set();
+      filtBatches.forEach(b=>(slots[b.name+'||'+day]||[]).forEach(sl=>{
+        if(sl.room!==room.name) return;
+        const gk=sl.merged?[b.name,sl.merged].sort().join('|'):b.name+'|'+sl.start;
+        grps.add(gk);
+      }));
+      const cnt=grps.size;
+      total+=cnt;
+      const bg=cnt===0?'#f0fdf4':cnt<=2?'#fffbeb':cnt<=3?'#fff7ed':'#fef2f2';
+      const color=cnt===0?'#16a34a':cnt<=2?'#92400e':cnt<=3?'#c2410c':'#dc2626';
+      html+=`<td style="padding:6px 10px;border:1px solid var(--border);text-align:center;background:${bg};font-weight:700;color:${color}">${cnt===0?'FREE':cnt}</td>`;
+    });
+    html+=`<td style="padding:6px 10px;border:1px solid var(--border);text-align:center;font-weight:700;background:#f0f9ff">${total}</td></tr>`;
+  });
+  html+=`</tbody></table></div></div>`;
+
+  // Teachers weekly
+  html+=`<div style="padding:14px 16px">
+    <div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">👩‍🏫 Teachers — Weekly Load</div>
+    <div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:.75rem;width:100%">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 10px;border:1px solid var(--border);text-align:left">Teacher</th>
+        ${days.map(d=>`<th style="padding:7px 10px;border:1px solid var(--border);text-align:center;${d==='Sat'?'background:#fff7ed':d==='Sun'?'background:#f5f0ff':''}">${d}</th>`).join('')}
+        <th style="padding:7px 10px;border:1px solid var(--border);text-align:center;background:#f0f9ff">Total hrs</th>
+      </tr></thead><tbody>`;
+
+  teachers.forEach(t=>{
+    let totalHrs=0;
+    html+=`<tr><td style="padding:6px 10px;border:1px solid var(--border)"><div style="font-weight:600">${t.name}</div><div style="font-size:.62rem;color:#94a3b8">${t.subjects.join(', ')}</div></td>`;
+    days.forEach(day=>{
+      const avail=(t.days||[]).includes(day);
+      if(!avail){html+=`<td style="padding:6px;border:1px solid var(--border);text-align:center;background:#f8fafc;color:#d1d5db;font-size:.65rem">Off</td>`;return;}
+      const tSl=[];
+      filtBatches.forEach(b=>(slots[b.name+'||'+day]||[]).forEach(sl=>{
+        if(sl.teacher===t.name&&!sl.isTest) tSl.push({...sl,batch:b.name});
+      }));
+      const hrs=tSl.reduce((s,sl)=>(t2m(sl.end)-t2m(sl.start))/60+s,0);
+      totalHrs+=hrs;
+      const bg=tSl.length===0?'#f0fdf4':hrs<=2?'#fffbeb':hrs<=4?'#fff7ed':'#fef2f2';
+      const color=tSl.length===0?'#16a34a':hrs<=2?'#92400e':hrs<=4?'#c2410c':'#dc2626';
+      html+=`<td style="padding:4px 6px;border:1px solid var(--border);background:${bg};vertical-align:top">
+        ${tSl.length===0?`<div style="text-align:center;font-weight:700;color:#16a34a;font-size:.68rem">FREE</div>`:
+          tSl.map(sl=>`<div style="font-size:.63rem;margin-bottom:1px"><span style="font-weight:600;color:${color}">${sl.start}–${sl.end}</span><br><span style="color:#64748b">${sl.subj}</span></div>`).join('')}
+      </td>`;
+    });
+    html+=`<td style="padding:6px 10px;border:1px solid var(--border);text-align:center;font-weight:700;background:#f0f9ff;color:${totalHrs>20?'#dc2626':totalHrs>12?'#c2410c':'#16a34a'}">${totalHrs.toFixed(1)}</td></tr>`;
+  });
+  html+=`</tbody></table></div></div>`;
+  el.innerHTML=html;
+}
+
+
+function runConflicts(){
+  // First sync merged batch rooms to avoid false conflicts
+  const syncFixed=syncMergedRooms();
+  const errors=[],warnings=[],missing=[];
+
+  // 1. Teacher double booking
+  const tSlotMap={};
+  BATCHES.forEach(batch=>{
+    const batchDays=batch.wing==='nxtair'?ALL_DAYS:WORK_DAYS;
+    batchDays.forEach(day=>{
+      (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+        if(!sl.teacher||sl.isTest) return;
+        const key=sl.teacher+'||'+day;
+        if(!tSlotMap[key]) tSlotMap[key]=[];
+        tSlotMap[key].push({...sl,batch:batch.name});
+      });
+    });
+  });
+  Object.entries(tSlotMap).forEach(([key,tSl])=>{
+    const[teacher,day]=key.split('||');
+    for(let i=0;i<tSl.length;i++) for(let j=i+1;j<tSl.length;j++){
+      const a=tSl[i],b=tSl[j];
+      if(a.merged&&(a.merged===b.batch||b.merged===a.batch)) continue;
+      if(t2m(a.start)<t2m(b.end)&&t2m(a.end)>t2m(b.start))
+        errors.push(`<b>${teacher}</b> double-booked on <b>${day}</b>: ${a.batch}(${a.start}–${a.end}) vs ${b.batch}(${b.start}–${b.end})`);
+    }
+  });
+
+  // 2. Teacher availability
+  BATCHES.forEach(batch=>WORK_DAYS.forEach(day=>{
+    (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+      if(!sl.teacher||sl.isTest) return;
+      const t=teachers.find(t=>t.name===sl.teacher);
+      if(t&&!t.days.includes(day)) errors.push(`<b>${sl.teacher}</b> not available on <b>${day}</b> — ${batch.name} (${sl.subj})`);
+    });
+  }));
+
+  // 3. Room double booking (TEST slots allowed to share rooms, SHORTAGE skipped)
+  const roomSlotMap={};
+  BATCHES.forEach(batch=>{
+    const bDays=batch.wing==='nxtair'?ALL_DAYS:WORK_DAYS;
+    bDays.forEach(day=>{
+      (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+        if(!sl.room||sl.room==='SHORTAGE') return;
+        const key=sl.room+'||'+day;
+        if(!roomSlotMap[key]) roomSlotMap[key]=[];
+        roomSlotMap[key].push({...sl,batch:batch.name});
+      });
+    });
+  });
+  Object.entries(roomSlotMap).forEach(([key,rSl])=>{
+    const[room,day]=key.split('||');
+    for(let i=0;i<rSl.length;i++) for(let j=i+1;j<rSl.length;j++){
+      const a=rSl[i],b=rSl[j];
+      if(a.merged&&(a.merged===b.batch||b.merged===a.batch)) continue;
+      if(a.isTest&&b.isTest) continue;
+      if(t2m(a.start)<t2m(b.end)&&t2m(a.end)>t2m(b.start)&&t2m(a.end)!==t2m(b.start)&&t2m(b.end)!==t2m(a.start))
+        errors.push(`<b>${room}</b> on <b>${day}</b>: <b>${a.batch}</b> ${a.subj} ${a.start}–${a.end} (stored room: ${a.room}) conflicts with <b>${b.batch}</b> ${b.subj} ${b.start}–${b.end} (stored room: ${b.room}) <button class="btn btn-sec btn-sm" style="margin-left:6px;font-size:.65rem" onclick="document.querySelector('.nav button:nth-child(4)').click();setTimeout(()=>{document.getElementById('rp-day').value='${day}';renderRoomPlanner();},50)">Fix in Planner →</button>`);
+    }
+  });
+
+    // 4. Maths+Science same day rule
+  ['7th','8th','9th','10th'].forEach(cls=>{
+    ['Core','Edge'].forEach(type=>{
+      const bname=cls+' '+type;
+      WORK_DAYS.filter(d=>d!=='Sat').forEach(day=>{
+        if(!BATCHES.find(b=>b.name===bname)) return;
+        const ds=slots[bname+'||'+day]||[];
+        const hasMath=ds.some(s=>s.subj==='Maths');
+        const hasSci=ds.some(s=>['Science','Physics','Chemistry','Biology','Physics / Chemistry'].includes(s.subj));
+        if(hasMath&&!hasSci) warnings.push(`<b>${bname}</b> on <b>${day}</b>: Maths without Science (same-day rule)`);
+        if(!hasMath&&hasSci) warnings.push(`<b>${bname}</b> on <b>${day}</b>: Science without Maths (same-day rule)`);
+      });
+    });
+  });
+
+  // 5. Missing sessions
+  // Physics family: Physics, Chemistry, Physics / Chemistry are interchangeable for 9th/10th
+  const phyFamily=['Physics','Chemistry','Physics / Chemistry'];
+  Object.entries(sessReq).forEach(([bname,reqs])=>{
+    const batch=BATCHES.find(b=>b.name===bname);
+    const checkDays=batch&&batch.wing==='nxtair'?ALL_DAYS:WORK_DAYS;
+    Object.entries(reqs).forEach(([subj,needed])=>{
+      let actual;
+      if(phyFamily.includes(subj)){
+        actual=checkDays.reduce((cnt,day)=>cnt+(slots[bname+'||'+day]||[]).filter(s=>phyFamily.includes(s.subj)&&!s.isTest).length,0);
+      } else {
+        actual=checkDays.reduce((cnt,day)=>cnt+(slots[bname+'||'+day]||[]).filter(s=>s.subj===subj&&!s.isTest).length,0);
+      }
+      if(actual<needed) missing.push({bname,subj,needed,actual,gap:needed-actual});
+    });
+  });
+
+  // Render
+  const out=document.getElementById('conflict-output');
+
+  // DEBUG: Build room assignment summary
+  const roomAssignDebug={};
+  BATCHES.forEach(batch=>WORK_DAYS.forEach(day=>{
+    (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+      if(!sl.room||sl.room==='SHORTAGE') return;
+      const k=sl.room+'||'+day;
+      if(!roomAssignDebug[k]) roomAssignDebug[k]=[];
+      roomAssignDebug[k].push(batch.name+': '+sl.subj+' '+sl.start+'–'+sl.end);
+    });
+  }));
+
+  let html=`<div class="g3" style="margin-bottom:12px">
+    <div class="stat-box"><div class="stat-val" style="color:${errors.length?'#dc2626':'#16a34a'}">${errors.length}</div><div class="stat-lbl">Errors</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:${warnings.length?'#f59e0b':'#16a34a'}">${warnings.length}</div><div class="stat-lbl">Warnings</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:${missing.length?'#7c3aed':'#16a34a'}">${missing.length}</div><div class="stat-lbl">Missing Sessions</div></div>
+  </div>`;
+
+  if(!errors.length&&!warnings.length&&!missing.length){html+='<div class="alert a-ok">✅ No conflicts! Schedule looks clean.</div>';}
+
+  // Add room assignment summary so user can verify
+  html+=`<details style="margin-top:14px"><summary style="cursor:pointer;font-size:.78rem;font-weight:600;color:var(--muted);padding:6px 0">🔍 View All Room Assignments (click to expand)</summary>
+  <div style="overflow-x:auto;margin-top:8px"><table class="tbl" style="font-size:.72rem">
+  <thead><tr><th>Room</th><th>Day</th><th>Slots assigned</th></tr></thead><tbody>
+  ${Object.entries(roomAssignDebug).sort().map(([k,v])=>{
+    const[rm,dy]=k.split('||');
+    return '<tr><td><b>'+rm+'</b></td><td>'+dy+'</td><td>'+v.join(' | ')+'</td></tr>';
+  }).join('')}
+  </tbody></table></div></details>`;
+
+  if(errors.length){
+    html+='<div class="sec-lbl">❌ Errors</div>';
+    errors.forEach(e=>html+=`<div class="alert a-err">⚡ ${e}</div>`);
+  }
+  if(warnings.length){
+    html+='<div class="sec-lbl">⚠️ Warnings</div>';
+    warnings.forEach(w=>html+=`<div class="alert a-warn">⚠ ${w}</div>`);
+  }
+  if(missing.length){
+    html+='<div class="sec-lbl">📌 Missing Sessions</div>';
+    html+=`<table class="tbl"><thead><tr><th>Batch</th><th>Subject</th><th>Required</th><th>Scheduled</th><th>Missing</th></tr></thead><tbody>`;
+    missing.forEach(m=>html+=`<tr style="background:#fef2f2"><td><b>${m.bname}</b></td><td>${m.subj}</td><td style="text-align:center">${m.needed}</td><td style="text-align:center;color:#f59e0b;font-weight:700">${m.actual}</td><td style="text-align:center"><span class="badge badge-err">−${m.gap}</span></td></tr>`);
+    html+='</tbody></table>';
+  }
+  out.innerHTML=html;
+}
+
+// ═══════════════════════════════ TEACHERS ═══════════════════════════════
+function renderTeacherTable(){
+  const el=document.getElementById('teacher-list-table');
+  if(!el) return;
+  el.innerHTML=`<table class="tbl"><thead><tr><th>Name</th><th>Subjects</th><th>Days</th><th>Max/Day</th><th>Notes</th><th></th></tr></thead><tbody>
+  ${teachers.map((t,i)=>`<tr>
+    <td><b>${t.name}</b></td><td>${t.subjects.join(', ')}</td><td>${t.days.join(', ')}</td>
+    <td style="text-align:center">${t.max}</td><td style="color:var(--muted)">${t.notes||''}</td>
+    <td><button class="btn btn-outline btn-sm" onclick="openTeacherForm(${i})">✏ Edit</button></td>
+  </tr>`).join('')}
+  </tbody></table>`;
+}
+
+function openTeacherForm(idx){
+  editTeacherIdx=idx;
+  const t=idx>=0?teachers[idx]:null;
+  document.getElementById('tm-title').textContent=t?'Edit — '+t.name:'Add Teacher';
+  document.getElementById('tm-name').value=t?t.name:'';
+  document.getElementById('tm-subj').value=t?t.subjects.join(', '):'';
+  document.getElementById('tm-max').value=t?t.max:4;
+  document.getElementById('tm-notes').value=t?t.notes||'':'';
+  document.getElementById('tm-del').style.display=t?'':'none';
+  const dc=document.getElementById('tm-days');
+  dc.innerHTML=ALL_DAYS.map(d=>`<button class="day-btn${t&&t.days.includes(d)?' on':!t&&d!=='Sun'?' on':''}" onclick="this.classList.toggle('on')">${d}</button>`).join('');
+  document.getElementById('teacher-modal').style.display='flex';
+}
+function closeTeacherModal(){document.getElementById('teacher-modal').style.display='none';}
+function saveTeacherModal(){
+  const name=document.getElementById('tm-name').value.trim();
+  if(!name){alert('Name required');return;}
+  const days=[...document.querySelectorAll('#tm-days .day-btn.on')].map(b=>b.textContent);
+  const data={id:editTeacherIdx>=0?teachers[editTeacherIdx].id:'t'+Date.now(),name,subjects:document.getElementById('tm-subj').value.split(',').map(s=>s.trim()).filter(Boolean),days,max:parseInt(document.getElementById('tm-max').value)||4,notes:document.getElementById('tm-notes').value};
+  if(editTeacherIdx>=0) teachers[editTeacherIdx]=data; else teachers.push(data);
+  closeTeacherModal();renderTeacherTable();
+  debouncedSave();
+}
+function deleteTeacher(){if(!confirm('Delete?'))return;teachers.splice(editTeacherIdx,1);closeTeacherModal();renderTeacherTable();}
+
+// ═══════════════════════════════ ROOMS MGMT ═══════════════════════════════
+
+function renderTeacherOccupancy(){
+  const day = document.getElementById('occ-day')?document.getElementById('occ-day').value:'Mon';
+  const el = document.getElementById('teacher-occ');
+  if(!el) return;
+
+  function t2m(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+  function fmt(m){const hh=Math.floor(m/60),mm=m%60,p=hh>=12?'PM':'AM',h12=hh>12?hh-12:(hh===0?12:hh);return h12+':'+String(mm).padStart(2,'0')+' '+p;}
+
+  // Build timeline per teacher
+  const teacherSlots = {};
+  BATCHES.forEach(batch=>{
+    (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+      if(!sl.teacher||sl.isTest) return;
+      if(!teacherSlots[sl.teacher]) teacherSlots[sl.teacher]=[];
+      teacherSlots[sl.teacher].push({...sl, batch:batch.name});
+    });
+  });
+
+  if(!Object.keys(teacherSlots).length){
+    el.innerHTML='<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">No classes on '+day+'</div>';
+    return;
+  }
+
+  let html=`<table class="tbl"><thead><tr>
+    <th>Teacher</th><th>Slots</th><th>Hours</th><th>Classes</th>
+  </tr></thead><tbody>`;
+
+  teachers.forEach(t=>{
+    const tSl=teacherSlots[t.name]||[];
+    if(!tSl.length){
+      html+=`<tr><td><b>${t.name}</b></td><td style="color:#16a34a;font-weight:600">FREE</td><td>—</td><td>—</td></tr>`;
+      return;
+    }
+    const hrs=tSl.reduce((s,sl)=>{
+      const diff=(t2m(sl.end)-t2m(sl.start))/60;
+      return s+diff;
+    },0);
+    const classes=tSl.map(sl=>`<span class="slot ${sc(sl.subj)}" style="font-size:.65rem;padding:2px 6px;border-radius:4px;margin:1px;display:inline-block">${sl.subj} ${sl.start}–${sl.end} <span style="opacity:.7">(${sl.batch})</span></span>`).join('');
+    html+=`<tr><td><b>${t.name}</b><br><span style="font-size:.68rem;color:var(--muted)">${t.subjects.join(', ')}</span></td>
+      <td>${tSl.length} slot${tSl.length>1?'s':''}</td>
+      <td>${hrs.toFixed(1)} hrs</td>
+      <td>${classes}</td></tr>`;
+  });
+
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+function renderRoomMgmt(){
+  const el=document.getElementById('room-mgmt');
+  if(!el) return;
+  el.innerHTML=`<table class="tbl"><thead><tr><th>Room</th><th>Capacity</th><th>Wing</th><th>Notes</th><th></th></tr></thead><tbody>
+  ${rooms.map((r,i)=>`<tr>
+    <td><b>${r.name}</b></td><td>${r.cap} students</td><td>${r.wing}</td><td style="color:var(--muted)">${r.notes||''}</td>
+    <td><button class="btn btn-outline btn-sm" onclick="openRoomForm(${i})">✏ Edit</button></td>
+  </tr>`).join('')}
+  </tbody></table>`;
+}
+function openRoomForm(idx){
+  editRoomIdx=idx;
+  const r=idx>=0?rooms[idx]:null;
+  document.getElementById('rm-title').textContent=r?'Edit — '+r.name:'Add Room';
+  document.getElementById('rm-name').value=r?r.name:'';
+  document.getElementById('rm-cap').value=r?r.cap:35;
+  document.getElementById('rm-wing').value=r?r.wing:'CBSE';
+  document.getElementById('rm-notes').value=r?r.notes||'':'';
+  document.getElementById('rm-del').style.display=r?'':'none';
+  document.getElementById('room-modal').style.display='flex';
+}
+function closeRoomModal(){document.getElementById('room-modal').style.display='none';}
+function saveRoomModal(){
+  const name=document.getElementById('rm-name').value.trim();
+  if(!name){alert('Name required');return;}
+  const data={id:editRoomIdx>=0?rooms[editRoomIdx].id:'r'+Date.now(),name,cap:parseInt(document.getElementById('rm-cap').value)||35,wing:document.getElementById('rm-wing').value,notes:document.getElementById('rm-notes').value};
+  if(editRoomIdx>=0) rooms[editRoomIdx]=data; else rooms.push(data);
+  closeRoomModal();renderRoomMgmt();
+  debouncedSave();
+}
+function deleteRoom(){if(!confirm('Delete?'))return;rooms.splice(editRoomIdx,1);closeRoomModal();renderRoomMgmt();}
+
+// ═══════════════════════════════ SESSIONS CONFIG ═══════════════════════════════
+function renderSessConfig(){
+  const el=document.getElementById('sess-config');
+  if(!el) return;
+  el.innerHTML=BATCHES.map(b=>`<div style="margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
+    <div style="font-weight:700;font-size:.82rem;margin-bottom:8px">${b.name}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px">
+    ${b.subjects.map(subj=>`<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">
+      <label>${subj}</label>
+      <input type="number" min="0" max="7" value="${(sessReq[b.name]||{})[subj]||0}"
+        style="width:48px;padding:3px 6px;border:1px solid var(--border);border-radius:5px"
+        data-batch="${b.name}" data-subj="${subj}" class="sess-inp"/>
+      <span style="color:var(--muted)">/wk</span>
+    </div>`).join('')}
+    </div>
+  </div>`).join('');
+}
+function saveSessConfig(){
+  document.querySelectorAll('.sess-inp').forEach(inp=>{
+    const b=inp.dataset.batch,s=inp.dataset.subj;
+    if(!sessReq[b]) sessReq[b]={};
+    sessReq[b][s]=parseInt(inp.value)||0;
+  });
+  alert('Saved!');
+}
+
+// ═══════════════════════════════ TRANSPORT ═══════════════════════════════
+function renderRoutes(){
+  const el=document.getElementById('route-list');
+  if(!el) return;
+  if(!transport.routes.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem">No routes yet. Add a driver/route.</div>';return;}
+  el.innerHTML=transport.routes.map((r,i)=>{
+    const _sq=(document.getElementById('tr-search')?document.getElementById('tr-search').value.trim().toLowerCase():'');
+    const routeStudents=transport.students.filter(s=>s.route===r.route&&(!_sq||s.name.toLowerCase().includes(_sq)||(s.batch||'').toLowerCase().includes(_sq)||(s.pickup||'').toLowerCase().includes(_sq)));
+    return `<div class="route-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:.85rem">${r.route}</div>
+          <div style="font-size:.75rem;color:var(--muted)">Driver: ${r.driver} · ${r.vehicle||''} · ${r.phone||''}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Stops: ${r.stops||'—'}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="openDriverForm(${i})">✏ Edit Route</button>
+      </div>
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Students (${routeStudents.length})</div>
+      ${routeStudents.length?`<table style="width:100%;border-collapse:collapse;font-size:.73rem">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left">Name</th>
+          <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left">Batch</th>
+          <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left">Stop</th>
+          <th style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:left">Subjects</th>
+          <th style="padding:4px 8px;border-bottom:1px solid var(--border)"></th>
+        </tr></thead>
+        <tbody>${routeStudents.map((s,si)=>{
+          const realIdx=transport.students.indexOf(s);
+          return `<tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:4px 8px"><b>${s.name}</b></td>
+            <td style="padding:4px 8px">${s.batch}<br><span style="font-size:.62rem;background:${s.centre==='nxtair'?'#7c3aed':'#4f46e5'};color:#fff;padding:1px 5px;border-radius:3px">${s.centre==='nxtair'?'NXT-AIR':'CBSE'}</span></td>
+            <td style="padding:4px 8px">${s.pickup||'—'}</td>
+            <td style="padding:4px 8px;color:var(--muted);font-size:.68rem">${s.subjects?s.subjects.join(', '):'All'}</td>
+            <td style="padding:4px 8px;display:flex;gap:4px">
+              <button class="btn btn-outline btn-sm" style="font-size:.65rem;padding:2px 7px" onclick="editStudent(${realIdx})">✏</button>
+              <button class="btn btn-err btn-sm" style="font-size:.65rem;padding:2px 7px" onclick="deleteStudent(${realIdx})">×</button>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`:'<div style="color:var(--muted);font-size:.72rem;padding:4px 0">No students on this route</div>'}
+    </div>`;
+  }).join('');
+  // Update route selects
+  const rs=document.getElementById('tr-route');
+  if(rs) rs.innerHTML='<option value="">— select —</option>'+transport.routes.map(r=>`<option value="${r.route}">${r.route} (${r.driver})</option>`).join('');
+}
+
+// Student edit modal
+let editStudentIdx=-1;
+
+function editStudent(idx){
+  editStudentIdx=idx;
+  const s=transport.students[idx];
+  if(!s) return;
+  document.getElementById('tr-student').value=s.name;
+  const ctrSel=document.getElementById('tr-centre');
+  if(ctrSel){ ctrSel.value=s.centre||'cbse'; updateBatchesByCentre(); }
+  document.getElementById('tr-batch').value=s.batch;
+  if(document.getElementById('tr-phone1')) document.getElementById('tr-phone1').value=s.phone1||'';
+  if(document.getElementById('tr-phone2')) document.getElementById('tr-phone2').value=s.phone2||'';
+  document.getElementById('tr-route').value=s.route;
+  document.getElementById('tr-pickup').value=s.pickup||'';
+  // Render subjects with student's current selections
+  const b=BATCHES.find(x=>x.name===s.batch);
+  renderSubjectPicker(b?b.subjects:[]);
+  // Check only enrolled subjects
+  setTimeout(()=>{
+    document.querySelectorAll('.tr-subj-cb').forEach(cb=>{
+      cb.checked=s.subjects?s.subjects.includes(cb.value):true;
+    });
+  },30);
+  // Change button text
+  const addBtn=document.querySelector('[onclick="addStudent()"]');
+  if(addBtn){ addBtn.textContent='💾 Update Student'; addBtn.setAttribute('onclick','updateStudent()'); }
+  document.getElementById('tr-student').scrollIntoView({behavior:'smooth'});
+}
+
+function updateStudent(){
+  const idx=editStudentIdx;
+  if(idx<0) return;
+  const name=document.getElementById('tr-student').value.trim();
+  const batch=document.getElementById('tr-batch').value;
+  const route=document.getElementById('tr-route').value;
+  const pickup=document.getElementById('tr-pickup').value.trim();
+  if(!name||!batch||!route){alert('Fill name, batch and route');return;}
+  const subjects=[...document.querySelectorAll('.tr-subj-cb:checked')].map(cb=>cb.value);
+  const ctr=document.getElementById('tr-centre')?document.getElementById('tr-centre').value:transport.students[idx].centre||'cbse';
+  transport.students[idx]={...transport.students[idx],name,batch,route,pickup,subjects,centre:ctr};
+  // Reset form
+  editStudentIdx=-1;
+  document.getElementById('tr-student').value='';
+  const addBtn=document.querySelector('[onclick="updateStudent()"]');
+  if(addBtn){ addBtn.textContent='Add Student'; addBtn.setAttribute('onclick','addStudent()'); }
+  debouncedSave();
+  renderRoutes();
+  renderDriverSchedule();
+}
+
+function deleteStudent(idx){
+  if(!confirm('Remove this student from transport?')) return;
+  transport.students.splice(idx,1);
+  saveTransportNow();
+  renderRoutes();
+  renderDriverSchedule();
+}
+
+let _trCustomSubjects=['Maths','Science','Physics','Chemistry','Biology','Physics / Chemistry','English','SST','Hindi','Sanskrit','Computer','Accounts','Economics','BST','Maths (shared)','TEST'];
+
+function updateBatchesByCentre(){
+  const centre=document.getElementById('tr-centre').value;
+  const sel=document.getElementById('tr-batch');
+  const filtered=centre==='nxtair'
+    ?BATCHES.filter(b=>b.wing==='nxtair')
+    :BATCHES.filter(b=>b.wing!=='nxtair');
+  sel.innerHTML=filtered.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  updateStudentSubjects();
+}
+
+function updateTrBatches(){
+  const centre=document.getElementById('tr-centre').value;
+  const bs=document.getElementById('tr-batch');
+  if(!bs) return;
+  const filtered=BATCHES.filter(b=>centre==='nxtair'?b.wing==='nxtair':b.wing!=='nxtair');
+  bs.innerHTML=filtered.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  updateStudentSubjects();
+}
+
+function updateStudentSubjects(){
+  const batch=document.getElementById('tr-batch').value;
+  const b=BATCHES.find(x=>x.name===batch);
+  renderSubjectPicker(b?b.subjects:[]);
+}
+
+function renderSubjectPicker(batchSubj){
+  const el=document.getElementById('tr-subjects');
+  if(!el) return;
+  let html='<div style="width:100%;display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">';
+  _trCustomSubjects.forEach(s=>{
+    const chk=(!batchSubj||batchSubj.length===0||batchSubj.includes(s))?'checked':'';
+    html+=`<label style="font-size:.73rem;display:flex;align-items:center;gap:3px;cursor:pointer;background:#fff;border:1px solid var(--border);border-radius:5px;padding:3px 6px">
+      <input type="checkbox" class="tr-subj-cb" value="${s}" ${chk}> ${s}
+      <button onclick="event.preventDefault();removeTrSubject('${s}')" style="margin-left:3px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:11px;padding:0;line-height:1">×</button>
+    </label>`;
+  });
+  html+='</div><div style="display:flex;gap:5px;width:100%">';
+  html+='<input id="tr-subj-new" placeholder="Add subject..." style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:.75rem"/>';
+  html+='<button class="btn btn-ok btn-sm" onclick="addTrSubject()">+ Add</button></div>';
+  el.innerHTML=html;
+}
+
+function addTrSubject(){
+  const inp=document.getElementById('tr-subj-new');
+  const val=inp?inp.value.trim():'';
+  if(!val) return;
+  if(!_trCustomSubjects.includes(val)) _trCustomSubjects.push(val);
+  inp.value='';
+  const batch=document.getElementById('tr-batch').value;
+  const b=BATCHES.find(x=>x.name===batch);
+  renderSubjectPicker(b?b.subjects:[]);
+  setTimeout(()=>{ document.querySelectorAll('.tr-subj-cb').forEach(cb=>{if(cb.value===val)cb.checked=true;}); },30);
+}
+
+function removeTrSubject(subj){
+  _trCustomSubjects=_trCustomSubjects.filter(s=>s!==subj);
+  const batch=document.getElementById('tr-batch').value;
+  const b=BATCHES.find(x=>x.name===batch);
+  renderSubjectPicker(b?b.subjects:[]);
+}
+
+
+function addStudent(){
+  const name=document.getElementById('tr-student').value.trim();
+  const batch=document.getElementById('tr-batch').value;
+  const route=document.getElementById('tr-route').value;
+  const pickup=document.getElementById('tr-pickup').value.trim();
+  if(!name||!batch||!route){alert('Fill name, batch and route');return;}
+  const subjects=[...document.querySelectorAll('.tr-subj-cb:checked')].map(cb=>cb.value);
+  const centre=document.getElementById('tr-centre')?document.getElementById('tr-centre').value:'cbse';
+  const phone1=document.getElementById('tr-phone1')?document.getElementById('tr-phone1').value.trim():'';
+  const phone2=document.getElementById('tr-phone2')?document.getElementById('tr-phone2').value.trim():'';
+  transport.students.push({name,batch,route,pickup,subjects,centre,phone1,phone2,id:'s'+Date.now()});
+  document.getElementById('tr-student').value='';
+  saveTransportNow(); // Save transport immediately - don't debounce
+  renderDriverSchedule();
+  renderRoutes();
+}
+
+function renderDriverSchedule(){
+  const day=document.getElementById('tr-day').value;
+  const el=document.getElementById('driver-schedule');
+  if(!el) return;
+  if(!transport.routes.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem">Add routes and students first.</div>';return;}
+
+  let html='';
+  transport.routes.forEach(route=>{
+    const students=transport.students.filter(s=>s.route===route.route);
+    if(!students.length) return;
+
+    // Get class times for each student
+    const pickupList=[],dropList=[];
+    students.forEach(st=>{
+      const batch=BATCHES.find(b=>b.name===st.batch);
+      if(!batch) return;
+      const allDs=slots[st.batch+'||'+day]||[];
+      // NXT-AIR batches also have Sunday classes
+      if(!allDs.length) return;
+      // Filter to only subjects the student is enrolled in
+      const enrolledSubjects=st.subjects&&st.subjects.length?st.subjects:null;
+      const ds=allDs.filter(s=>{
+        if(!enrolledSubjects) return true;
+        if(s.isTest) return enrolledSubjects.includes('TEST')||enrolledSubjects.length===0;
+        return enrolledSubjects.includes(s.subj);
+      });
+      if(!ds.length) return; // student has no class today
+      const first=ds.sort((a,b)=>a.start.localeCompare(b.start))[0];
+      const last=[...ds].sort((a,b)=>b.end.localeCompare(a.end))[0];
+      const subjList=ds.map(s=>s.subj).join(', ');
+      if(first) pickupList.push({student:st.name,batch:st.batch,pickup:st.pickup,time:first.start,subj:subjList});
+      if(last) dropList.push({student:st.name,batch:st.batch,pickup:st.pickup,time:last.end,subj:subjList});
+    });
+    pickupList.sort((a,b)=>a.time.localeCompare(b.time));
+    dropList.sort((a,b)=>a.time.localeCompare(b.time));
+
+    html+=`<div class="route-card" style="margin-bottom:12px">
+      <div style="font-weight:700;font-size:.85rem;margin-bottom:8px">🚌 ${route.route} — Driver: ${route.driver}</div>
+      <div class="g2">
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">📍 Pickup Schedule</div>
+          <table class="tbl" style="font-size:.75rem">
+            <thead><tr><th>Time</th><th>Student</th><th>Stop</th><th>Batch</th><th>Subjects</th></tr></thead>
+            <tbody>${pickupList.map(p=>`<tr><td><b>${p.time}</b></td><td>${p.student}</td><td>${p.pickup}</td><td>${p.batch}</td><td style="color:var(--muted);font-size:.68rem">${p.subj||''}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--muted)">No classes today</td></tr>'}</tbody>
+          </table>
+        </div>
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">🏠 Drop Schedule</div>
+          <table class="tbl" style="font-size:.75rem">
+            <thead><tr><th>Time</th><th>Student</th><th>Stop</th><th>Batch</th><th>Subjects</th></tr></thead>
+            <tbody>${dropList.map(p=>`<tr><td><b>${p.time}</b></td><td>${p.student}</td><td>${p.pickup}</td><td>${p.batch}</td><td style="color:var(--muted);font-size:.68rem">${p.subj||''}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--muted)">No classes today</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html||'<div style="color:var(--muted);font-size:.78rem">No transport data for '+day+'.</div>';
+}
+
+// Driver modal
+function openDriverForm(idx){
+  editDriverIdx=idx;
+  const r=idx>=0?transport.routes[idx]:null;
+  document.getElementById('dm-title').textContent=r?'Edit Route':'Add Route';
+  document.getElementById('dm-driver').value=r?r.driver:'';
+  document.getElementById('dm-route').value=r?r.route:'';
+  document.getElementById('dm-vehicle').value=r?r.vehicle||'':'';
+  document.getElementById('dm-phone').value=r?r.phone||'':'';
+  document.getElementById('dm-stops').value=r?r.stops||'':'';
+  document.getElementById('dm-del').style.display=r?'':'none';
+  document.getElementById('driver-modal').style.display='flex';
+}
+function closeDriverModal(){document.getElementById('driver-modal').style.display='none';}
+function saveDriverModal(){
+  const driver=document.getElementById('dm-driver').value.trim();
+  const route=document.getElementById('dm-route').value.trim();
+  if(!driver||!route){alert('Driver and Route name required');return;}
+  const data={driver,route,vehicle:document.getElementById('dm-vehicle').value,phone:document.getElementById('dm-phone').value,stops:document.getElementById('dm-stops').value};
+  if(editDriverIdx>=0) transport.routes[editDriverIdx]=data; else transport.routes.push(data);
+  closeDriverModal();renderRoutes();renderDriverSchedule();
+}
+function deleteDriver(){if(!confirm('Delete route?'))return;transport.routes.splice(editDriverIdx,1);closeDriverModal();renderRoutes();}
+
+// ═══════════════════════════════ EXPORT / IMPORT ═══════════════════════════════
+function exportData(){
+  try{
+    const d=JSON.stringify({slots,teachers,rooms,sessReq,transport},null,2);
+    const b=new Blob([d],{type:'application/json'});
+    const u=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    a.href=u; a.download='basu_schedule.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(u); },1000);
+  }catch(e){ alert('Save failed: '+e.message); }
+}
+function importData(e){
+  const file=e.target.files[0];if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.slots) slots=d.slots;
+      if(d.teachers&&d.teachers.length) teachers=d.teachers;
+      if(d.rooms&&d.rooms.length) rooms=d.rooms;
+      if(d.sessReq) sessReq=d.sessReq;
+      if(d.transport) transport=d.transport;
+      if(d.batchStrength) window.batchStrength=d.batchStrength;
+      renderAll();
+      try { autoSave(); } catch(e2){}
+      alert('✅ Schedule loaded successfully!');
+    }catch(err){
+      alert('Invalid file: '+err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+// ═══════════════════════════════ BATCH CONFIG ═══════════════════════════════
+function renderBatchConfig(){
+  if(!window.batchStrength) window.batchStrength={};
+  const el=document.getElementById('batch-config');
+  if(!el) return;
+  el.innerHTML=BATCHES.map(b=>{
+    const str=window.batchStrength[b.name]||35;
+    const inactive=window.inactiveBatches&&window.inactiveBatches.includes(b.name);
+    return `<div style="display:grid;grid-template-columns:160px 1fr 80px 100px;gap:10px;align-items:start;padding:10px;background:${inactive?'#f8f8f8':'#f8fafc'};border-radius:8px;border:1px solid ${inactive?'#fca5a5':' var(--border)'};margin-bottom:8px;opacity:${inactive?'0.6':'1'}">
+      <div>
+        <div style="font-weight:700;font-size:.82rem">${b.name}</div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:2px">${b.wing} wing</div>
+        ${inactive?'<span style="font-size:.62rem;background:#ef4444;color:#fff;padding:1px 5px;border-radius:3px">INACTIVE</span>':''}
+      </div>
+      <div>
+        <label class="lbl">Subjects (comma separated)</label>
+        <input value="${b.subjects.join(', ')}" data-batch="${b.name}" class="batch-subj-inp"
+          style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:.78rem"/>
+      </div>
+      <div>
+        <label class="lbl">Strength</label>
+        <input type="number" value="${str}" min="1" max="200" data-batch="${b.name}" class="batch-str-inp"
+          style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:.78rem"/>
+      </div>
+      <div>
+        <label class="lbl">Status</label>
+        <button onclick="toggleBatchActive('${b.name}')" class="btn btn-sm" style="width:100%;background:${inactive?'#16a34a':'#ef4444'};color:#fff;border:none">
+          ${inactive?'✅ Activate':'⏸ Deactivate'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleBatchActive(bname){
+  if(!window.inactiveBatches) window.inactiveBatches=[];
+  const idx=window.inactiveBatches.indexOf(bname);
+  if(idx>=0) window.inactiveBatches.splice(idx,1);
+  else window.inactiveBatches.push(bname);
+  renderBatchConfig();
+  renderBatchView(); // update timetable
+}
+
+function saveBatchConfig(){
+  // Save subjects
+  document.querySelectorAll('.batch-subj-inp').forEach(inp=>{
+    const bname=inp.dataset.batch;
+    const batch=BATCHES.find(b=>b.name===bname);
+    if(batch) batch.subjects=inp.value.split(',').map(s=>s.trim()).filter(Boolean);
+  });
+  // Save strength
+  if(!window.batchStrength) window.batchStrength={};
+  document.querySelectorAll('.batch-str-inp').forEach(inp=>{
+    window.batchStrength[inp.dataset.batch]=parseInt(inp.value)||35;
+  });
+  // Update sessReq to match new subjects
+  BATCHES.forEach(b=>{
+    if(!sessReq[b.name]) sessReq[b.name]={};
+    // Remove subjects that no longer exist
+    Object.keys(sessReq[b.name]).forEach(s=>{
+      if(!b.subjects.includes(s)) delete sessReq[b.name][s];
+    });
+    // Add new subjects with 0
+    b.subjects.forEach(s=>{
+      if(sessReq[b.name][s]===undefined) sessReq[b.name][s]=0;
+    });
+  });
+  renderSessConfig();
+  alert('Batch config saved! Sessions config updated too.');
+}
+
+
+// ═══════════════════════════════ PDF IMPORT ═══════════════════════════════
+function importFromPDF(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  e.target.value = '';
+
+  // Show loading modal
+  showPDFModal('loading', file.name);
+
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try {
+      const base64Data = ev.target.result.split(',')[1];
+      await callClaudeWithPDF(base64Data, file.name);
+    } catch(err) {
+      showPDFModal('error', err.message);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function showPDFModal(state, msg){
+  let el = document.getElementById('pdf-modal');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'pdf-modal';
+    el.className = 'modal-bg';
+    el.style.display = 'flex';
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+
+  if(state === 'loading'){
+    el.innerHTML = `<div class="modal" style="text-align:center;padding:30px 20px">
+      <div style="font-size:2rem;margin-bottom:12px">📄</div>
+      <div style="font-weight:700;font-size:.95rem;margin-bottom:8px">Reading PDF: ${msg}</div>
+      <div style="color:var(--muted);font-size:.8rem;margin-bottom:16px">Claude is extracting the schedule from your PDF...<br>This may take 15-30 seconds.</div>
+      <div style="display:flex;gap:6px;justify-content:center">
+        <div style="width:8px;height:8px;background:var(--pri);border-radius:50%;animation:bounce 1s infinite 0s"></div>
+        <div style="width:8px;height:8px;background:var(--pri);border-radius:50%;animation:bounce 1s infinite .2s"></div>
+        <div style="width:8px;height:8px;background:var(--pri);border-radius:50%;animation:bounce 1s infinite .4s"></div>
+      </div>
+      <style>@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}</style>
+    </div>`;
+  } else if(state === 'preview'){
+    // msg is the extracted data object
+    const data = msg;
+    const totalSlots = Object.values(data.slots||{}).reduce((n,a)=>n+a.length,0);
+    el.innerHTML = `<div class="modal" style="max-width:560px">
+      <div class="modal-hdr">📄 PDF Import Preview <button class="modal-close" onclick="closePDFModal()">×</button></div>
+      <div class="alert a-ok" style="margin-bottom:10px">✅ Extracted ${totalSlots} slots from PDF!</div>
+      <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px;max-height:300px;overflow-y:auto;font-size:.75rem">
+        ${Object.entries(data.slots||{}).map(([key,sls])=>{
+          const [batch,day]=key.split('||');
+          return sls.map(s=>`<div style="padding:2px 0;border-bottom:1px solid #f0f0f0"><b>${batch}</b> ${day}: ${s.subj} ${s.start}–${s.end}${s.teacher?' ('+s.teacher+')':''}</div>`).join('');
+        }).join('')}
+      </div>
+      <div class="alert a-warn" style="margin-top:10px">⚠️ This will MERGE with existing schedule. Existing slots will be kept.</div>
+      <div class="modal-foot">
+        <button class="btn btn-sec" onclick="closePDFModal()">Cancel</button>
+        <button class="btn btn-err" onclick="applyPDFImport(${JSON.stringify(data).replace(/"/g,"'")},true)">Replace All</button>
+        <button class="btn btn-ok" onclick="applyPDFImport(${JSON.stringify(data)},false)">Merge</button>
+      </div>
+    </div>`;
+  } else if(state === 'error'){
+    el.innerHTML = `<div class="modal" style="text-align:center;padding:24px">
+      <div style="font-size:2rem;margin-bottom:10px">❌</div>
+      <div style="font-weight:700;margin-bottom:8px">Import Failed</div>
+      <div style="color:var(--muted);font-size:.78rem;margin-bottom:16px">${msg}</div>
+      <button class="btn btn-sec" onclick="closePDFModal()">Close</button>
+    </div>`;
+  }
+}
+
+function closePDFModal(){
+  const el=document.getElementById('pdf-modal');
+  if(el) el.style.display='none';
+}
+
+async function callClaudeWithPDF(base64Data, fileName){
+  const prompt = `You are extracting a coaching center timetable from a PDF.
+
+Extract ALL class slots and return ONLY a valid JSON object (no markdown, no explanation).
+
+The JSON must have this exact structure:
+{
+  "slots": {
+    "BATCH_NAME||DAY": [
+      {"subj": "Subject", "teacher": "Teacher name", "start": "HH:MM", "end": "HH:MM", "room": "", "merged": "", "isTest": false}
+    ]
+  }
+}
+
+Rules:
+- BATCH_NAME must be one of: 7th Core, 7th Edge, 8th Core, 8th Edge, 9th Core, 9th Edge, 10th Core, 10th Edge, 11th PCM, 11th PCB, 11th Commerce, 12th PCM, 12th PCB, 12th Commerce
+- DAY must be one of: Mon, Tue, Wed, Thu, Fri, Sat
+- Times in 24hr format HH:MM (e.g. "16:30" for 4:30 PM)
+- isTest: true only for TEST/Exam slots
+- merged: if two batches share same class (e.g. PCM+PCB for Physics), set merged to the other batch name
+- teacher: exact name from context if available, else empty string
+- room: leave empty string ""
+- Include ALL slots for ALL batches and ALL days found in the PDF
+- Saturday is TEST day typically
+
+Return ONLY the JSON, nothing else.`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{
+        role: 'user',
+        content: [
+          {type: 'document', source: {type: 'base64', media_type: 'application/pdf', data: base64Data}},
+          {type: 'text', text: prompt}
+        ]
+      }]
+    })
+  });
+
+  if(!response.ok){
+    const err = await response.json();
+    throw new Error('API Error: ' + (err.error?.message || response.status));
+  }
+
+  const result = await response.json();
+  const text = result.content.find(b=>b.type==='text')?.text || '';
+
+  // Parse JSON from response
+  let jsonStr = text.trim();
+  // Remove markdown fences if present
+  jsonStr = jsonStr.replace(/^```json\n?/,'').replace(/^```\n?/,'').replace(/\n?```$/,'').trim();
+
+  let data;
+  try {
+    data = JSON.parse(jsonStr);
+  } catch(err) {
+    // Try to extract JSON from text
+    const match = jsonStr.match(/\{[\s\S]*\}/);
+    if(match) data = JSON.parse(match[0]);
+    else throw new Error('Could not parse schedule from PDF. Response: ' + text.substring(0,200));
+  }
+
+  if(!data.slots || !Object.keys(data.slots).length){
+    throw new Error('No schedule data found in PDF. Make sure the PDF contains a timetable.');
+  }
+
+  showPDFModal('preview', data);
+}
+
+function applyPDFImport(data, replace){
+  try {
+    if(replace){
+      slots = {};
+    }
+    // Merge slots
+    Object.entries(data.slots||{}).forEach(([key, sls])=>{
+      if(!slots[key]) slots[key] = [];
+      sls.forEach(sl => {
+        // Avoid duplicates
+        const exists = slots[key].some(s=>s.subj===sl.subj&&s.start===sl.start);
+        if(!exists) slots[key].push({
+          subj: sl.subj||'',
+          teacher: sl.teacher||'',
+          start: sl.start||'',
+          end: sl.end||'',
+          room: sl.room||'',
+          merged: sl.merged||'',
+          notes: sl.notes||'',
+          isTest: sl.isTest||false
+        });
+      });
+      // Sort by time
+      slots[key].sort((a,b)=>a.start.localeCompare(b.start));
+    });
+
+    closePDFModal();
+    renderAll();
+    alert('✅ PDF schedule imported! ' + Object.values(data.slots||{}).reduce((n,a)=>n+a.length,0) + ' slots loaded.');
+  } catch(err) {
+    alert('Error applying import: ' + err.message);
+  }
+}
+
+
+function loadNXTAIRSchedule() {
+  const s = (batch, day, subj, teacher, start, end, room='', opts={}) => {
+    const key = batch+'||'+day;
+    if(!slots[key]) slots[key] = [];
+    slots[key].push({subj,teacher,start,end,room,merged:opts.merged||'',notes:opts.notes||'',isTest:opts.isTest||false});
+  };
+
+  // ── 9TH GENESIS ──
+  s('9th Genesis','Mon','Biology','Rahul sir','16:15','17:45','Room A');
+  s('9th Genesis','Mon','Maths','Kajal mam','17:45','19:15','Room A');
+  s('9th Genesis','Tue','Chemistry','Vidhi mam','16:15','17:45','Room A');
+  s('9th Genesis','Tue','Maths','Kajal mam','17:45','19:15','Room A');
+  s('9th Genesis','Thu','TEST','','16:15','19:15','Room A',{isTest:true});
+  s('9th Genesis','Fri','Chemistry','Vidhi mam','16:15','17:45','Room A');
+  s('9th Genesis','Fri','Maths','Kajal mam','17:45','19:15','Room A');
+  s('9th Genesis','Sat','SST','','17:00','18:00','Room A');
+  s('9th Genesis','Sat','English','','18:00','19:00','Room A');
+  s('9th Genesis','Sun','SST','','17:00','18:00','Room A');
+  s('9th Genesis','Sun','English','','18:00','19:00','Room A');
+
+  // ── 10TH GENESIS ──
+  s('10th Genesis','Mon','Maths','Kajal mam','16:15','17:45','Room B');
+  s('10th Genesis','Mon','Biology','Rahul sir','17:45','19:15','Room B');
+  s('10th Genesis','Tue','Physics','Arun sir','16:15','17:45','Room B');
+  s('10th Genesis','Tue','Maths','Kajal mam','17:45','19:15','Room B');
+  s('10th Genesis','Thu','Physics','Arun sir','16:15','17:45','Room B');
+  s('10th Genesis','Thu','Maths','Kajal mam','17:45','19:15','Room B');
+  s('10th Genesis','Fri','TEST','','16:15','19:15','Room B',{isTest:true});
+  s('10th Genesis','Sat','English','','17:00','18:00','Room B');
+  s('10th Genesis','Sat','SST','','18:00','19:00','Room B');
+  s('10th Genesis','Sun','English','','17:00','18:00','Room B');
+  s('10th Genesis','Sun','SST','','18:00','19:00','Room B');
+
+  // ── 11TH JEE MAINS ──
+  s('11th JEE Mains','Mon','TEST','','16:15','19:15','Room C',{isTest:true});
+  s('11th JEE Mains','Tue','Maths','Kajal mam','16:15','17:45','Room C');
+  s('11th JEE Mains','Tue','Physics','Arun sir','17:45','19:15','Room C');
+  s('11th JEE Mains','Thu','Chemistry','Vidhi mam','16:15','17:45','Room C');
+  s('11th JEE Mains','Thu','Physics','Arun sir','17:45','19:15','Room C');
+  s('11th JEE Mains','Sat','Maths','Kajal mam','16:15','17:45','Room C');
+  s('11th JEE Mains','Sat','Chemistry','Vidhi mam','17:45','19:15','Room C');
+  s('11th JEE Mains','Sat','Physics','Arun sir','19:15','20:45','Room C');
+  s('11th JEE Mains','Sun','Maths','Kajal mam','10:30','12:00','Room C');
+  s('11th JEE Mains','Sun','Chemistry','Vidhi mam','12:00','13:30','Room C');
+  s('11th JEE Mains','Sun','Physics','Arun sir','13:30','15:00','Room C');
+
+  // ── 11TH NEET ──
+  s('11th NEET','Mon','TEST','','16:15','19:15','Room D',{isTest:true});
+  s('11th NEET','Tue','Biology','Rahul sir','16:15','17:45','Room D');
+  s('11th NEET','Tue','Physics','Arun sir','17:45','19:15','Room D');
+  s('11th NEET','Thu','Chemistry','Vidhi mam','16:15','17:45','Room D');
+  s('11th NEET','Thu','Physics','Arun sir','17:45','19:15','Room D');
+  s('11th NEET','Sat','Biology','Rahul sir','16:15','17:45','Room D');
+  s('11th NEET','Sat','Chemistry','Vidhi mam','17:45','19:15','Room D');
+  s('11th NEET','Sat','Physics','Arun sir','19:15','20:45','Room D');
+  s('11th NEET','Sun','Biology','Rahul sir','10:30','12:00','Room D');
+  s('11th NEET','Sun','Chemistry','Vidhi mam','12:00','13:30','Room D');
+  s('11th NEET','Sun','Physics','Arun sir','13:30','15:00','Room D');
+
+  // ── 12TH JEE MAINS ──
+  s('12th JEE Mains','Mon','TEST','','17:45','19:15','Room C',{isTest:true});
+  s('12th JEE Mains','Tue','Maths','Kajal mam','17:45','19:15','Room C');
+  s('12th JEE Mains','Tue','Physics','Arun sir','19:15','20:45','Room C');
+  s('12th JEE Mains','Thu','Chemistry','Vidhi mam','17:45','19:15','Room C');
+  s('12th JEE Mains','Thu','Physics','Arun sir','19:15','20:45','Room C');
+  s('12th JEE Mains','Sat','Physics','Arun sir','16:15','17:45','Room C');
+  s('12th JEE Mains','Sat','Maths','Kajal mam','17:45','19:15','Room C');
+  s('12th JEE Mains','Sat','Chemistry','Vidhi mam','19:15','20:45','Room C');
+  s('12th JEE Mains','Sun','Maths','Kajal mam','09:00','10:30','Room C');
+  s('12th JEE Mains','Sun','Chemistry','Vidhi mam','10:30','12:00','Room C');
+  s('12th JEE Mains','Sun','Physics','Arun sir','12:00','13:30','Room C');
+
+  // ── 12TH NEET ──
+  s('12th NEET','Mon','TEST','','17:45','19:15','Room D',{isTest:true});
+  s('12th NEET','Tue','Biology','Rahul sir','17:45','19:15','Room D');
+  s('12th NEET','Tue','Physics','Arun sir','19:15','20:45','Room D');
+  s('12th NEET','Thu','Chemistry','Vidhi mam','17:45','19:15','Room D');
+  s('12th NEET','Thu','Physics','Arun sir','19:15','20:45','Room D');
+  s('12th NEET','Sat','Physics','Arun sir','16:15','17:45','Room D');
+  s('12th NEET','Sat','Biology','Rahul sir','17:45','19:15','Room D');
+  s('12th NEET','Sat','Chemistry','Vidhi mam','19:15','20:45','Room D');
+  s('12th NEET','Sun','Biology','Rahul sir','09:00','10:30','Room D');
+  s('12th NEET','Sun','Chemistry','Vidhi mam','10:30','12:00','Room D');
+  s('12th NEET','Sun','Physics','Arun sir','12:00','13:30','Room D');
+}
+
+// ═══════════════════════════════ PDF DOWNLOAD ═══════════════════════════════
+let _pdfType='timetable';
+
+function openPDFModal(type){
+  _pdfType=type;
+  const titles={timetable:'📅 Timetable PDF',transport:'🚌 Transport PDF',teacher:'👩‍🏫 Teacher Occupancy PDF',room:'🚪 Room Occupancy PDF'};
+  document.getElementById('pdf-modal-title').textContent=titles[type]||'PDF';
+  document.getElementById('pdf-transport-opts').style.display=type==='transport'?'':'none';
+  document.getElementById('pdf-modal').style.display='flex';
+}
+
+function executePDF(){
+  document.getElementById('pdf-modal').style.display='none';
+  const range=document.querySelector('input[name="pdf-range"]:checked').value;
+  const day=document.getElementById('pdf-day').value;
+  const trType=document.getElementById('pdf-transport-type').value;
+  downloadPDF(_pdfType, range, day, trType);
+}
+
+function downloadPDF(type, range='weekly', day='Mon', trType='day'){
+  const win=window.open('','_blank');
+  const today=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const rangeLabel=range==='day'?day:'Weekly';
+
+  const style=`<style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;color:#1e293b;font-size:11px}
+    .hdr{background:linear-gradient(135deg,#1e40af 0%,#7c3aed 100%);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+    .hdr-l h1{font-size:18px;font-weight:800;letter-spacing:-0.5px}
+    .hdr-l p{font-size:10px;opacity:.8;margin-top:2px}
+    .hdr-r{text-align:right;font-size:10px;opacity:.8}
+    .hdr-r b{font-size:13px;font-weight:700;opacity:1;display:block}
+    .body{padding:16px 24px}
+    h2{font-size:12px;font-weight:700;color:#1e40af;margin:14px 0 6px;border-bottom:2px solid #bfdbfe;padding-bottom:3px;text-transform:uppercase;letter-spacing:.05em}
+    h3{font-size:11px;font-weight:600;color:#7c3aed;margin:10px 0 4px;background:#f5f3ff;padding:3px 8px;border-radius:4px;border-left:3px solid #7c3aed}
+    table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:10px}
+    th{background:#1e40af;color:#fff;padding:5px 7px;text-align:left;font-size:9px;font-weight:600;text-transform:uppercase}
+    td{padding:4px 7px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+    tr:nth-child(even) td{background:#f8fafc}
+    .free{color:#16a34a;font-weight:700}
+    .test{background:#fef2f2!important}
+    .badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:700;color:#fff}
+    .b-cbse{background:#1e40af}.b-nxt{background:#7c3aed}
+    .ftr{background:#f8fafc;border-top:1px solid #e2e8f0;padding:8px 24px;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between;margin-top:12px}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style>`;
+
+  const hdr=`<div class="hdr">
+    <div class="hdr-l"><h1>BASU Classes</h1><p>CBSE Centre &nbsp;|&nbsp; NXT-AIR Centre</p></div>
+    <div class="hdr-r"><b>${{timetable:'Weekly Timetable',transport:'Transport Schedule',teacher:'Teacher Occupancy',room:'Room Occupancy'}[type]}</b>${rangeLabel} &nbsp;|&nbsp; ${today}</div>
+  </div>`;
+
+  const ftr=`<div class="ftr"><span>BASU Classes — Confidential</span><span>${rangeLabel} Report</span><span>${today}</span></div>`;
+
+  let content='';
+  if(type==='timetable') content=pdfTimetable(range,day);
+  else if(type==='transport') content=pdfTransport(range,day,trType);
+  else if(type==='teacher') content=pdfTeacher(range,day);
+  else if(type==='room') content=pdfRoom(range,day);
+
+  win.document.write(`<!DOCTYPE html><html><head><title>BASU — ${type}</title>${style}</head>
+    <body>${hdr}<div class="body">${content}</div>${ftr}
+    <script>setTimeout(()=>window.print(),600);<\/script></body></html>`);
+  win.document.close();
+}
+
+function t2m(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+
+function pdfTimetable(range,selDay){
+  const days=range==='day'?[selDay]:ALL_DAYS;
+  let html='';
+  const inactive=window.inactiveBatches||[];
+
+  ['CBSE','NXT-AIR'].forEach(centre=>{
+    const batches=BATCHES.filter(b=>(centre==='CBSE'?b.wing!=='nxtair':b.wing==='nxtair')&&!inactive.includes(b.name));
+    html+=`<h2>${centre==='CBSE'?'🏫 BASU CBSE Centre':'🚀 BASU NXT-AIR Centre'}</h2>`;
+    batches.forEach(batch=>{
+      const hasSlots=days.some(d=>(slots[batch.name+'||'+d]||[]).length);
+      if(!hasSlots) return;
+      html+=`<h3>${batch.name}</h3>`;
+      html+=`<table><thead><tr><th>Day</th><th>Subject</th><th>Time</th><th>Teacher</th><th>Room</th><th>Notes</th></tr></thead><tbody>`;
+      days.forEach(day=>{
+        (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+          html+=`<tr class="${sl.isTest?'test':''}"><td><b>${day}</b></td><td>${sl.subj}${sl.isTest?' 📝':''}</td><td>${sl.start}–${sl.end}</td><td>${sl.teacher||'—'}</td><td>${sl.room||'—'}</td><td style="color:#64748b">${sl.merged?'+ '+sl.merged:''}</td></tr>`;
+        });
+      });
+      html+='</tbody></table>';
+    });
+  });
+  return html;
+}
+
+function pdfTransport(range,selDay,trType){
+  let html='';
+  const days=range==='day'?[selDay]:ALL_DAYS;
+
+  if(trType==='route'){
+    // Route-wise full student list
+    transport.routes.forEach(route=>{
+      const students=transport.students.filter(s=>s.route===route.route);
+      if(!students.length) return;
+      html+=`<h2>🚌 ${route.route} — ${route.driver} (${route.phone||'—'})</h2>`;
+      html+=`<p style="font-size:9px;color:#64748b;margin-bottom:6px">Stops: ${route.stops||'—'} &nbsp;|&nbsp; Vehicle: ${route.vehicle||'—'}</p>`;
+      html+=`<table><thead><tr><th>#</th><th>Student</th><th>Batch</th><th>Centre</th><th>Stop</th><th>Parent 1</th><th>Parent 2</th><th>Subjects</th></tr></thead><tbody>`;
+      students.forEach((s,i)=>{
+        html+=`<tr><td>${i+1}</td><td><b>${s.name}</b></td><td>${s.batch}</td>
+          <td><span class="badge ${s.centre==='nxtair'?'b-nxt':'b-cbse'}">${s.centre==='nxtair'?'NXT-AIR':'CBSE'}</span></td>
+          <td>${s.pickup||'—'}</td><td>${s.phone1||'—'}</td><td>${s.phone2||'—'}</td>
+          <td style="font-size:9px">${s.subjects?s.subjects.join(', '):'All'}</td></tr>`;
+      });
+      html+='</tbody></table>';
+    });
+  } else if(trType==='day'){
+    // Day-wise - only students who have class that day
+    days.forEach(day=>{
+      html+=`<h2>📅 ${day} — Transport Schedule</h2>`;
+      transport.routes.forEach(route=>{
+        const students=transport.students.filter(s=>s.route===route.route);
+        const activeStudents=students.filter(st=>{
+          const ds=(slots[st.batch+'||'+day]||[]).filter(s=>
+            !st.subjects||(s.isTest?st.subjects.includes('TEST'):st.subjects.includes(s.subj))
+          );
+          return ds.length>0;
+        });
+        if(!activeStudents.length) return;
+        html+=`<h3>🚌 ${route.route} — ${route.driver}</h3>`;
+        html+=`<table><thead><tr><th>Student</th><th>Batch</th><th>Stop</th><th>Pickup</th><th>Drop</th><th>Phone</th></tr></thead><tbody>`;
+        activeStudents.forEach(st=>{
+          const ds=(slots[st.batch+'||'+day]||[]).filter(s=>
+            !st.subjects||(s.isTest?st.subjects.includes('TEST'):st.subjects.includes(s.subj))
+          ).sort((a,b)=>a.start.localeCompare(b.start));
+          const first=ds[0], last=ds[ds.length-1];
+          html+=`<tr><td><b>${st.name}</b></td><td>${st.batch}</td><td>${st.pickup||'—'}</td>
+            <td><b>${first?first.start:'—'}</b></td><td><b>${last?last.end:'—'}</b></td>
+            <td>${st.phone1||'—'}${st.phone2?' / '+st.phone2:''}</td></tr>`;
+        });
+        html+='</tbody></table>';
+      });
+    });
+  } else {
+    // Weekly per student
+    transport.routes.forEach(route=>{
+      const students=transport.students.filter(s=>s.route===route.route);
+      if(!students.length) return;
+      html+=`<h2>🚌 ${route.route} — Weekly Schedule</h2>`;
+      html+=`<table><thead><tr><th>Student</th><th>Stop</th>${ALL_DAYS.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
+      students.forEach(st=>{
+        html+=`<tr><td><b>${st.name}</b><br><span style="font-size:9px;color:#64748b">${st.batch}</span></td><td>${st.pickup||'—'}</td>`;
+        ALL_DAYS.forEach(day=>{
+          const ds=(slots[st.batch+'||'+day]||[]).filter(s=>
+            !st.subjects||(s.isTest?st.subjects.includes('TEST'):st.subjects.includes(s.subj))
+          ).sort((a,b)=>a.start.localeCompare(b.start));
+          if(!ds.length){html+=`<td style="color:#d1d5db;text-align:center">—</td>`;return;}
+          const first=ds[0],last=ds[ds.length-1];
+          html+=`<td style="font-size:9px"><b>${first.start}</b>–<b>${last.end}</b></td>`;
+        });
+        html+='</tr>';
+      });
+      html+='</tbody></table><br>';
+    });
+  }
+  if(!html) html='<p style="color:#94a3b8;padding:20px">No transport data.</p>';
+  return html;
+}
+
+function pdfTeacher(range,selDay){
+  const days=range==='day'?[selDay]:ALL_DAYS;
+  let html='';
+  html+=`<table><thead><tr><th>Teacher</th><th>Subjects</th>${days.map(d=>`<th>${d}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  teachers.forEach(t=>{
+    html+=`<tr><td><b>${t.name}</b></td><td style="font-size:9px">${t.subjects.join(', ')}</td>`;
+    let total=0;
+    days.forEach(day=>{
+      const tSl=[];
+      BATCHES.forEach(b=>(slots[b.name+'||'+day]||[]).forEach(sl=>{if(sl.teacher===t.name&&!sl.isTest)tSl.push({...sl,batch:b.name});}));
+      if(!tSl.length){html+=`<td class="free">FREE</td>`;return;}
+      total+=tSl.length;
+      html+=`<td style="font-size:9px">${tSl.map(sl=>`${sl.subj}<br><span style="color:#64748b">${sl.batch} ${sl.start}–${sl.end}</span>`).join('<hr style="border:none;border-top:1px solid #e2e8f0;margin:2px 0">')}</td>`;
+    });
+    html+=`<td style="text-align:center;font-weight:700;background:#f0fdf4;color:#166534">${total}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  return html;
+}
+
+function pdfRoom(range,selDay){
+  const days=range==='day'?[selDay]:ALL_DAYS;
+  let html='';
+  html+=`<table><thead><tr><th>Room</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
+  rooms.forEach(r=>{
+    html+=`<tr><td><b>${r.name}</b><br><span style="font-size:9px;color:#64748b">Cap: ${r.cap}</span></td>`;
+    days.forEach(day=>{
+      const occ=[];
+      const seen=new Set();
+      BATCHES.forEach(batch=>{
+        (slots[batch.name+'||'+day]||[]).forEach(sl=>{
+          if(sl.room!==r.name) return;
+          const gk=sl.merged?[batch.name,sl.merged].sort().join('|'):batch.name;
+          if(seen.has(gk+'|'+sl.start)) return;
+          seen.add(gk+'|'+sl.start);
+          occ.push({...sl,batchName:batch.name});
+        });
+      });
+      occ.sort((a,b)=>a.start.localeCompare(b.start));
+      if(!occ.length){html+=`<td class="free" style="text-align:center">FREE</td>`;return;}
+      html+=`<td style="font-size:9px">${occ.map(sl=>`<b>${sl.start}–${sl.end}</b><br>${sl.subj}<br><span style="color:#64748b">${sl.batchName}${sl.merged?' +'+sl.merged:''}</span>`).join('<hr style="border:none;border-top:1px solid #e2e8f0;margin:2px 0">')}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  return html;
+}
+
+
+
+// ═══════════════════════════════ BULK UPLOAD ═══════════════════════════════
+function downloadCSVTemplate(){
+  const headers = ['name','batch','centre','route','pickup','phone1','phone2','subjects'];
+  const example1 = ['Rahul Sharma','9th Core','cbse','Route 1','Sector 45','9876543210','9876543211','Maths,Physics,Chemistry,Biology,English,SST'];
+  const example2 = ['Priya Singh','11th JEE Mains','nxtair','Route 2','Sector 62','9988776655','','Maths,Physics,Chemistry'];
+  const csv = [headers, example1, example2].map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = 'basu_transport_template.csv';
+  a.click();
+}
+
+function bulkUploadStudents(e){
+  const file = e.target.files[0];
+  if(!file){return;}
+  e.target.value='';
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    try{
+      const text = ev.target.result;
+      const delim = text.includes('\t') ? '\t' : ',';
+      const lines = text.trim().split('\n');
+      if(lines.length < 2){alert('File is empty or has no data rows');return;}
+
+      const headers = lines[0].split(delim).map(h=>h.trim().toLowerCase().replace(/"/g,''));
+      const idx = {
+        name: headers.indexOf('name'),
+        batch: headers.indexOf('batch'),
+        centre: headers.indexOf('centre'),
+        route: headers.indexOf('route'),
+        pickup: headers.indexOf('pickup'),
+        phone1: headers.indexOf('phone1'),
+        phone2: headers.indexOf('phone2'),
+        subjects: headers.indexOf('subjects'),
+      };
+
+      if(idx.name<0||idx.batch<0){
+        alert('CSV must have at least "name" and "batch" columns!\nDownload the template to see the correct format.');
+        return;
+      }
+
+      let added=0, skipped=0, errors=[];
+      lines.slice(1).forEach((line,li)=>{
+        if(!line.trim()) return;
+        const cols = line.split(delim).map(c=>c.trim().replace(/^"|"$/g,''));
+        const name = idx.name>=0?cols[idx.name]||'':'';
+        const batch = idx.batch>=0?cols[idx.batch]||'':'';
+        if(!name||!batch){skipped++;return;}
+
+        // Validate batch
+        const bInfo = BATCHES.find(b=>b.name.toLowerCase()===batch.toLowerCase());
+        if(!bInfo){errors.push(`Row ${li+2}: Unknown batch "${batch}"`);skipped++;return;}
+
+        const route = idx.route>=0?cols[idx.route]||'':'';
+        const centre = idx.centre>=0?cols[idx.centre]||'cbse':'cbse';
+        const pickup = idx.pickup>=0?cols[idx.pickup]||'':'';
+        const phone1 = idx.phone1>=0?cols[idx.phone1]||'':'';
+        const phone2 = idx.phone2>=0?cols[idx.phone2]||'':'';
+        const subjStr = idx.subjects>=0?cols[idx.subjects]||'':'';
+        const subjects = subjStr?subjStr.split(';').join(',').split(',').map(s=>s.trim()).filter(Boolean):bInfo.subjects;
+
+        // Check duplicate
+        const exists = transport.students.some(s=>s.name.toLowerCase()===name.toLowerCase()&&s.batch.toLowerCase()===batch.toLowerCase());
+        if(exists){skipped++;return;}
+
+        transport.students.push({name,batch,route,centre,pickup,phone1,phone2,subjects,id:'s'+Date.now()+Math.random()});
+        added++;
+      });
+
+      let msg = `✅ Imported ${added} students!`;
+      if(skipped) msg += `\n⚠ Skipped ${skipped} (duplicates or missing data)`;
+      if(errors.length) msg += `\n❌ Errors:\n` + errors.slice(0,5).join('\n');
+      alert(msg);
+      renderRoutes();
+      renderDriverSchedule();
+      debouncedSave();
+    }catch(err){
+      alert('Error reading file: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════ RENDER ALL ═══════════════════════════════
+function renderAll(){
+  updateStats();
+  initBuilder();
+  renderBatchView();
+  renderTeacherTable();
+  renderRoomMgmt();
+  renderBatchConfig();
+  renderSessConfig();
+  initFreeSlots();
+  renderFreeSlots();
+  const bs=document.getElementById('tr-batch');
+  if(bs) bs.innerHTML=BATCHES.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+}
+
+function autoSave(){ /* no-op */ }
+function autoLoad(){ return false; }
+
+// Auto-save to Firebase after every change (2 second debounce)
+let _autoSaveTimer = null;
+
+function saveTransportNow(){
+  // Immediately save transport to its own Firebase node
+  loadFirebaseSDK().then(()=>{
+    if(!db) return;
+    db.ref('transport').set(JSON.parse(JSON.stringify(transport)))
+      .then(()=>showSyncStatus('✅ Transport saved!','#166534'))
+      .catch(e=>showSyncStatus('❌ Transport save failed','#dc2626'));
+  }).catch(()=>{});
+}
+
+function debouncedSave(){
+  if(_autoSaveTimer) clearTimeout(_autoSaveTimer);
+  showSyncStatus('...unsaved changes', '#d97706');
+  _autoSaveTimer = setTimeout(()=>{
+    saveToFirebase();
+  }, 2000);
+}
+
+// Init
+initData();
+loadPDFSchedule();
+loadNXTAIRSchedule();
+
+// Restore transport from localStorage (survives refresh)
+try{
+  const saved = localStorage.getItem('basu_transport');
+  if(saved){
+    const parsed = JSON.parse(saved);
+    if(parsed && parsed.students && parsed.students.length > 0){
+      transport = parsed;
+    }
+  }
+} catch(e){}
+
+renderAll();
+// Firebase sync is MANUAL only
+
+// PDF modal radio change
+document.addEventListener('change', function(e){
+  if(e.target.name==='pdf-range'){
+    document.getElementById('pdf-day-sel').style.display=e.target.value==='day'?'':'none';
+  }
+});
+
+</script>
+</div><!-- end .main -->
+</body>
+</html>
