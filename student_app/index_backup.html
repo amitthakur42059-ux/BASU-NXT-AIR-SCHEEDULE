@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#f97316">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BASU Bus">
+<title>BASU Classes – Bus Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: '228f183d-3c5e-41bd-aade-8f62c7db7c96',
+      serviceWorkerParam: { scope: '/' },
+      serviceWorkerPath: 'OneSignalSDKWorker.js',
+      notifyButton: { enable: false },
+      allowLocalhostAsSecureOrigin: true,
+      promptOptions: {
+        slidedown: {
+          prompts: [{
+            type: 'push',
+            autoPrompt: true,
+            text: {
+              actionMessage: 'BASU CABS से bus notifications पाएं!',
+              acceptButton: 'Allow',
+              cancelButton: 'Later'
+            },
+            delay: { pageViews: 1, timeDelay: 3 }
+          }]
+        }
+      }
+    });
+  });
+</script>
+<style>
+:root{
+  --bg:#f0f4ff;--bg2:#fff;--bg3:#e8eeff;--card:#fff;--border:#d0d9f0;
+  --orange:#f97316;--orange2:#ea580c;--orangeD:rgba(249,115,22,.10);
+  --blue:#2563eb;--blue2:#1d4ed8;--blueD:rgba(37,99,235,.10);
+  --green:#16a34a;--red:#dc2626;--yellow:#d97706;--purple:#7c3aed;
+  --text:#111827;--text2:#374151;--text3:#6b7280;
+  --sh:0 2px 16px rgba(37,99,235,.09);--sh2:0 4px 24px rgba(37,99,235,.15);
+  --tab-h:62px;--top-h:58px;--font:'Baloo 2','Noto Sans Devanagari',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);position:fixed;inset:0;overflow:hidden;}
+/* SPLASH */
+#splash{position:fixed;inset:0;background:linear-gradient(135deg,#1e40af,#f97316);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px;}
+.sbus{font-size:72px;animation:bob 1s ease infinite alternate;}
+@keyframes bob{from{transform:translateY(0) rotate(-2deg);}to{transform:translateY(-14px) rotate(2deg);}}
+.stitle{font-size:30px;font-weight:800;color:#fff;}
+.ssub{font-size:14px;color:rgba(255,255,255,.85);}
+.sdots{display:flex;gap:7px;margin-top:8px;}
+.sdot{width:9px;height:9px;border-radius:50%;background:#fff;opacity:.4;animation:pd 1.2s ease infinite;}
+.sdot:nth-child(2){animation-delay:.2s;}.sdot:nth-child(3){animation-delay:.4s;}
+@keyframes pd{0%,100%{opacity:.3;transform:scale(.8);}50%{opacity:1;transform:scale(1.2);}}
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:linear-gradient(160deg,#eff6ff,#fff7ed);display:none;flex-direction:column;overflow-y:auto;}
+.ltop{padding:56px 24px 28px;text-align:center;}
+.llogo{font-size:60px;margin-bottom:10px;}
+.lbrand{font-size:28px;font-weight:800;background:linear-gradient(90deg,#2563eb,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.ltag{font-size:13px;color:var(--text3);margin-top:3px;}
+.lbody{padding:0 20px 48px;flex:1;}
+.lcard{background:#fff;border:1.5px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--sh2);}
+.ltitle{font-size:18px;font-weight:800;margin-bottom:5px;}
+.lsub{font-size:13px;color:var(--text3);margin-bottom:18px;}
+.phonewrap{display:flex;align-items:center;background:var(--bg3);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.pflag{padding:0 12px;font-size:20px;border-right:1px solid var(--border);height:52px;display:flex;align-items:center;}
+.ppfx{padding:0 8px;font-size:16px;font-weight:700;color:var(--text3);}
+#phoneInput{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:20px;font-weight:800;font-family:var(--font);padding:0 12px 0 0;height:52px;letter-spacing:2px;}
+#phoneInput::placeholder{color:var(--text3);font-weight:400;font-size:14px;letter-spacing:0;}
+.otpboxes{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
+.otpbox{width:46px;height:54px;background:var(--bg3);border:2px solid var(--border);border-radius:12px;text-align:center;font-size:22px;font-weight:800;color:var(--text);outline:none;font-family:var(--font);transition:border-color .2s;}
+.otpbox:focus{border-color:var(--blue);}.otpbox.filled{border-color:var(--orange);}
+.btnP{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;font-size:17px;font-weight:800;font-family:var(--font);cursor:pointer;box-shadow:0 4px 16px rgba(249,115,22,.35);transition:opacity .2s,transform .1s;}
+.btnP:active{transform:scale(.98);opacity:.9;}.btnP:disabled{opacity:.5;cursor:not-allowed;}
+.btnS{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:12px;background:#fff;color:var(--text2);font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;margin-top:10px;}
+#recaptcha-container{margin:10px 0;display:flex;justify-content:center;}
+.otptimer{text-align:center;font-size:13px;color:var(--text3);margin-top:8px;}
+.errmsg{color:var(--red);font-size:13px;margin-top:6px;text-align:center;font-weight:600;}
+/* APP */
+#app{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg);}
+/* TOPBAR */
+.topbar{height:var(--top-h);min-height:var(--top-h);background:linear-gradient(90deg,#1e3a8a,#2563eb);display:flex;align-items:center;padding:0 14px;gap:10px;box-shadow:0 2px 12px rgba(37,99,235,.25);}
+.ticon{font-size:26px;}.tinfo{flex:1;}
+.ttitle{font-size:17px;font-weight:800;color:#fff;line-height:1.2;}
+.tsub{font-size:12px;color:rgba(255,255,255,.75);}
+.langbtn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:5px 11px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:var(--font);}
+/* CONTENT */
+#content{flex:1;overflow:hidden;position:relative;}
+.tabpanel{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 13px calc(var(--tab-h) + 14px);display:none;}
+.tabpanel.active{display:block;}
+/* BOTTOM TABS */
+.btabs{height:var(--tab-h);min-height:var(--tab-h);background:#fff;border-top:1.5px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);box-shadow:0 -2px 12px rgba(37,99,235,.08);}
+.tbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;cursor:pointer;color:var(--text3);transition:all .2s;padding:6px 2px;font-family:var(--font);position:relative;}
+.tbtn.active{color:var(--orange);}
+.tbtn.active::after{content:'';position:absolute;bottom:0;left:25%;right:25%;height:3px;background:var(--orange);border-radius:3px 3px 0 0;}
+.tbtnicon{font-size:21px;transition:transform .2s;}.tbtn.active .tbtnicon{transform:scale(1.18);}
+.tbtnlbl{font-size:10px;font-weight:700;}
+/* CARD */
+.card{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:15px;margin-bottom:11px;box-shadow:var(--sh);}
+.ctitle{font-size:12px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;margin-bottom:11px;display:flex;align-items:center;gap:5px;}
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;}
+.bgr{background:rgba(22,163,74,.12);color:var(--green);border:1px solid rgba(22,163,74,.25);}
+.bgo{background:var(--orangeD);color:var(--orange2);border:1px solid rgba(249,115,22,.25);}
+.bgrd{background:rgba(220,38,38,.10);color:var(--red);border:1px solid rgba(220,38,38,.2);}
+.bgb{background:var(--blueD);color:var(--blue);border:1px solid rgba(37,99,235,.2);}
+.bgy{background:rgba(217,119,6,.10);color:var(--yellow);border:1px solid rgba(217,119,6,.2);}
+.bgp{background:rgba(124,58,237,.10);color:var(--purple);border:1px solid rgba(124,58,237,.2);}
+/* MAP */
+#map{height:230px;border-radius:14px;overflow:hidden;border:1.5px solid var(--border);margin-bottom:11px;box-shadow:var(--sh);}
+/* BUS HERO */
+.bushero{background:linear-gradient(135deg,#1e3a8a,#2563eb 60%,#f97316 150%);border-radius:16px;padding:18px;margin-bottom:11px;color:#fff;position:relative;overflow:hidden;box-shadow:var(--sh2);}
+.bushero::after{content:'🚌';position:absolute;right:-6px;top:50%;transform:translateY(-50%);font-size:80px;opacity:.09;}
+.brname{font-size:21px;font-weight:800;}.beta{font-size:32px;font-weight:800;}
+.beta small{font-size:14px;font-weight:500;color:rgba(255,255,255,.8);}
+.bstxt{font-size:13px;color:rgba(255,255,255,.8);margin:4px 0;}
+.rrow{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+.rinfo{font-size:11px;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:5px;}
+.ldot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:pd 2s ease infinite;}
+.rbtn{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:5px 11px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);}
+/* TIME GRID */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px;}
+.tcell{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;box-shadow:var(--sh);}
+.tcicon{font-size:22px;margin-bottom:3px;}.tclbl{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.tctime{font-size:22px;font-weight:800;color:var(--orange);margin:3px 0;}.tcsub{font-size:10px;color:var(--text3);}
+/* DRIVER */
+.dcard{background:linear-gradient(135deg,#eff6ff,#fff7ed);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:11px;box-shadow:var(--sh);}
+.dav{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--orange2));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(249,115,22,.3);}
+.dinfo{flex:1;}.dname{font-size:16px;font-weight:800;}.droute{font-size:12px;color:var(--text3);}
+.dcall{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 12px rgba(22,163,74,.4);}
+/* CLASS ITEMS */
+.citem{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:9px;position:relative;overflow:hidden;box-shadow:var(--sh);}
+.citem::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px;}
+.citem.regular::before{background:var(--blue);}.citem.test::before{background:var(--red);}.citem.special::before{background:var(--yellow);}
+.crow{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.csubj{font-size:17px;font-weight:800;color:var(--text);flex:1;}.ctime{font-size:13px;font-weight:800;color:var(--orange);text-align:right;white-space:nowrap;}
+.cmeta{font-size:12px;color:var(--text3);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;}
+.noclass{text-align:center;padding:52px 20px;}
+.nci{font-size:52px;margin-bottom:12px;}.nct{font-size:17px;font-weight:800;color:var(--text2);}.ncs{font-size:13px;color:var(--text3);margin-top:4px;}
+/* WEEK */
+.dsect{margin-bottom:14px;}
+.dhdr{display:flex;align-items:center;gap:8px;padding:10px 13px;background:linear-gradient(90deg,var(--blueD),transparent);border:1.5px solid var(--border);border-radius:11px;margin-bottom:8px;}
+.dhname{font-size:15px;font-weight:800;flex:1;color:var(--blue);}.dhcount{font-size:12px;color:var(--text3);}
+.todaypill{background:var(--orange);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;}
+.wrow{background:#fff;border:1.5px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:6px;display:flex;align-items:center;gap:10px;box-shadow:var(--sh);}
+.wicon{font-size:18px;width:26px;text-align:center;}.winfo{flex:1;}
+.wlbl{font-size:11px;color:var(--text3);font-weight:700;}.wtime{font-size:17px;font-weight:800;color:var(--orange);}.wsub{font-size:11px;color:var(--text3);}
+/* ATTENDANCE */
+.atstats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.atstat{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px 8px;text-align:center;box-shadow:var(--sh);}
+.atnum{font-size:30px;font-weight:800;}.atnum.g{color:var(--green);}.atnum.r{color:var(--red);}.atnum.o{color:var(--orange);}
+.atlbl{font-size:11px;color:var(--text3);font-weight:700;margin-top:2px;}
+.atprog{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--sh);}
+.attrack{height:11px;background:var(--bg3);border-radius:6px;overflow:hidden;margin:8px 0;}
+.atfill{height:100%;border-radius:6px;background:linear-gradient(90deg,#16a34a,#4ade80);transition:width .6s ease;}
+.atfill.warn{background:linear-gradient(90deg,#d97706,#fbbf24);}.atfill.danger{background:linear-gradient(90deg,#dc2626,#f87171);}
+.tripitem{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px;box-shadow:var(--sh);}
+.tripdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}.tripdot.p{background:var(--green);}.tripdot.a{background:var(--red);}
+.tripinfo{flex:1;}.tripdate{font-size:14px;font-weight:700;}.triptype{font-size:12px;color:var(--text3);}
+.tripst{font-size:13px;font-weight:800;}.tripst.p{color:var(--green);}.tripst.a{color:var(--red);}
+/* PROFILE */
+.phero{background:linear-gradient(135deg,#1e3a8a,#2563eb 60%,#f97316 130%);border-radius:20px;padding:22px;margin-bottom:12px;text-align:center;color:#fff;box-shadow:var(--sh2);}
+.pav{width:74px;height:74px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff;margin:0 auto 12px;border:3px solid rgba(255,255,255,.6);}
+.pname{font-size:23px;font-weight:800;color:#fff;}.pbatch{font-size:13px;color:rgba(255,255,255,.8);margin-top:3px;}.pid{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;}
+.pillrow{display:flex;flex-wrap:wrap;gap:6px;padding:3px 0;}
+.pill{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:800;border:1.5px solid;}
+.pill:nth-child(6n+1){background:rgba(37,99,235,.1);color:#1d4ed8;border-color:rgba(37,99,235,.25);}
+.pill:nth-child(6n+2){background:rgba(124,58,237,.1);color:var(--purple);border-color:rgba(124,58,237,.25);}
+.pill:nth-child(6n+3){background:rgba(22,163,74,.1);color:var(--green);border-color:rgba(22,163,74,.25);}
+.pill:nth-child(6n+4){background:rgba(217,119,6,.1);color:var(--yellow);border-color:rgba(217,119,6,.25);}
+.pill:nth-child(6n+5){background:rgba(249,115,22,.1);color:var(--orange2);border-color:rgba(249,115,22,.25);}
+.pill:nth-child(6n+6){background:rgba(220,38,38,.1);color:var(--red);border-color:rgba(220,38,38,.25);}
+.irow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.irow:last-child{border-bottom:none;}.ilbl{font-size:13px;color:var(--text3);display:flex;align-items:center;gap:5px;}
+.ival{font-size:14px;font-weight:700;color:var(--text);text-align:right;max-width:62%;}
+.fellowitem{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.fellowitem:last-child{border-bottom:none;}
+.fellowav{width:38px;height:38px;border-radius:50%;background:var(--blueD);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--blue);flex-shrink:0;}
+.fellowname{font-size:14px;font-weight:700;flex:1;}.fellowstop{font-size:11px;color:var(--text3);}
+.instbtn{width:100%;padding:16px;border:2px dashed var(--orange);border-radius:14px;background:var(--orangeD);color:var(--orange2);font-size:15px;font-weight:800;font-family:var(--font);cursor:pointer;margin-top:4px;}
+.instinstr{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-top:10px;display:none;box-shadow:var(--sh);}
+.instinstr.show{display:block;}
+.instep{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+.isnum{width:22px;height:22px;border-radius:50%;background:var(--orange);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.istxt{font-size:13px;color:var(--text2);padding-top:2px;}
+.btnlogout{width:100%;padding:13px;border:1.5px solid #fee2e2;border-radius:12px;background:#fff;color:var(--red);font-size:14px;font-weight:800;font-family:var(--font);cursor:pointer;margin-top:10px;}
+.seclbl{font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:14px 0 7px;padding-left:3px;}
+.emptystate{text-align:center;padding:40px 20px;}
+.ei{font-size:46px;margin-bottom:12px;opacity:.5;}.et{font-size:15px;font-weight:700;color:var(--text2);}.es{font-size:13px;color:var(--text3);margin-top:5px;}
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+#toast{position:fixed;bottom:calc(var(--tab-h)+14px);left:50%;transform:translateX(-50%) translateY(70px);background:#1e293b;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:700;color:#fff;z-index:9999;transition:transform .3s;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3);}
+#toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+<body>
+
+<div id="splash">
+  <div class="sbus">🚌</div>
+  <div class="stitle">BASU Classes</div>
+  <div class="ssub" id="splashSub">बस ट्रैकर लोड हो रहा है...</div>
+  <div class="sdots"><span class="sdot"></span><span class="sdot"></span><span class="sdot"></span></div>
+</div>
+
+<div id="loginScreen">
+  <div class="ltop">
+    <div class="llogo">🚌</div>
+    <div class="lbrand">BASU Classes</div>
+    <div class="ltag" id="loginTag">बस ट्रैकर – छात्र पोर्टल</div>
+  </div>
+  <div class="lbody">
+    <div id="stepPhone" class="lcard">
+      <div class="ltitle" id="lt1">अपना मोबाइल नंबर दर्ज करें</div>
+      <div class="lsub" id="ls1">वही नंबर जो BASU में रजिस्टर है</div>
+      <div class="phonewrap">
+        <div class="pflag">🇮🇳</div><div class="ppfx">+91</div>
+        <input type="tel" id="phoneInput" maxlength="10" inputmode="numeric" placeholder="10 अंकों का नंबर">
+      </div>
+      <div id="recaptcha-container"></div>
+      <button class="btnP" id="sendOtpBtn">OTP भेजें</button>
+      <div id="phoneErr" class="errmsg"></div>
+    </div>
+    <div id="stepOtp" class="lcard" style="display:none">
+      <div class="ltitle">OTP दर्ज करें</div>
+      <div class="lsub" id="otpSentTo">आपके नंबर पर OTP भेजा गया</div>
+      <div class="otpboxes">
+        <input type="tel" maxlength="1" class="otpbox" inputmode="numeric">
+        <input type="tel" maxlength="1" class="otpbox" inputmode="numeric">
+        <input type="tel" maxlength="1" class="otpbox" inputmode="numeric">
+        <input type="tel" maxlength="1" class="otpbox" inputmode="numeric">
+        <input type="tel" maxlength="1" class="otpbox" inputmode="numeric">
+        <input type="tel" maxlength="1" class="otpbox" inputmode="numeric">
+      </div>
+      <button class="btnP" id="verifyOtpBtn">सत्यापित करें</button>
+      <button class="btnS" id="resendOtpBtn">OTP दोबारा भेजें</button>
+      <div class="otptimer" id="otpTimer"></div>
+      <div id="otpErr" class="errmsg"></div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="ticon">🚌</div>
+    <div class="tinfo">
+      <div class="ttitle">BASU Classes</div>
+      <div class="tsub" id="topName">—</div>
+    </div>
+    <button class="langbtn" id="langBtn" onclick="toggleLang()">EN</button>
+  </div>
+  <div id="content">
+    <!-- BUS -->
+    <div class="tabpanel active" id="tab-bus">
+      <div id="map"></div>
+      <div class="bushero">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div class="brname" id="busRoute">—</div><div id="busBadge"></div>
+        </div>
+        <div class="bstxt" id="busTxt"></div>
+        <div class="beta" id="busEta">— <small id="etaUnit">मिनट में</small></div>
+        <div class="rrow">
+          <div class="rinfo"><span class="ldot"></span><span id="lastRef">लाइव ट्रैकिंग</span></div>
+          <button class="rbtn" id="refBtnTxt" onclick="doRefresh()">↻ रिफ्रेश</button>
+        </div>
+      </div>
+      <div class="tgrid">
+        <div class="tcell"><div class="tcicon">🏠→🚌</div><div class="tclbl" id="pickLbl">पिकअप समय</div><div class="tctime" id="pickTime">—</div><div class="tcsub" id="pickSub">बस आपके स्टॉप पर</div></div>
+        <div class="tcell"><div class="tcicon">🚌→🏠</div><div class="tclbl" id="dropLbl">ड्रॉप समय</div><div class="tctime" id="dropTime">—</div><div class="tcsub" id="dropSub">घर वापसी</div></div>
+      </div>
+      <div id="drvCard" class="dcard" style="display:none">
+        <div class="dav">👨‍✈️</div>
+        <div class="dinfo"><div class="dname" id="drvName">—</div><div class="droute" id="drvRoute"></div></div>
+        <button class="dcall" onclick="callDrv()">📞</button>
+      </div>
+      <div class="card">
+        <div class="ctitle">📍 <span id="stopTitle">आपका स्टॉप</span></div>
+        <div id="stopName" style="font-size:15px;font-weight:700;color:var(--text)"></div>
+        <div id="stopSub" style="font-size:12px;color:var(--text3);margin-top:5px"></div>
+      </div>
+    </div>
+    <!-- TODAY -->
+    <div class="tabpanel" id="tab-today">
+      <div class="seclbl" id="todayLbl"></div>
+      <div id="todayContent"></div>
+    </div>
+    <!-- WEEK -->
+    <div class="tabpanel" id="tab-week">
+      <div class="card" style="margin-bottom:14px">
+        <div class="ctitle">🗓️ <span id="weekTitle">साप्ताहिक अनुसूची</span></div>
+        <div style="font-size:13px;color:var(--text3)" id="weekSub">सभी दिनों के पिकअप और ड्रॉप समय</div>
+      </div>
+      <div id="weekContent"></div>
+    </div>
+    <!-- ATTENDANCE -->
+    <div class="tabpanel" id="tab-attendance">
+      <div class="atstats">
+        <div class="atstat"><div class="atnum g" id="atP">—</div><div class="atlbl" id="lP">उपस्थित</div></div>
+        <div class="atstat"><div class="atnum r" id="atA">—</div><div class="atlbl" id="lA">अनुपस्थित</div></div>
+        <div class="atstat"><div class="atnum o" id="atT">—</div><div class="atlbl" id="lT">कुल</div></div>
+      </div>
+      <div class="atprog">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:14px;font-weight:800;color:var(--text)" id="pctLbl">उपस्थिति %</span>
+          <span style="font-size:20px;font-weight:800;color:var(--orange)" id="atPct">—%</span>
+        </div>
+        <div class="attrack"><div class="atfill" id="atBar" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)"><span>0%</span><span id="minLbl">75% (न्यूनतम)</span><span>100%</span></div>
+      </div>
+      <div class="seclbl" id="tripLbl">यात्रा रिकॉर्ड</div>
+      <div id="attList"></div>
+    </div>
+    <!-- PROFILE -->
+    <div class="tabpanel" id="tab-profile">
+      <div class="phero">
+        <div class="pav" id="pAvatar">👤</div>
+        <div class="pname" id="pName">—</div>
+        <div class="pbatch" id="pBatch">—</div>
+        <div class="pid" id="pId">—</div>
+      </div>
+      <div class="card">
+        <div class="ctitle">📚 <span id="subjTit">विषय</span></div>
+        <div class="pillrow" id="pillRow"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">ℹ️ <span id="infoTit">जानकारी</span></div>
+        <div id="infoRows"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">👥 <span id="fellowTit">साथ के छात्र</span></div>
+        <div id="fellowList"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">🚌 <span id="drvTit">ड्राइवर जानकारी</span></div>
+        <div id="drvProfile"></div>
+      </div>
+      <button class="instbtn" onclick="doInstall()">📲 <span id="instTxt">होम स्क्रीन पर इंस्टॉल करें</span></button>
+      <div class="instinstr" id="instInstr"></div>
+      <button id="notifEnableBtn" onclick="setupFCM(S&&S.id)" style="width:100%;padding:14px;border:1.5px solid rgba(37,99,235,.25);border-radius:14px;background:rgba(37,99,235,.08);color:var(--blue);font-size:14px;font-weight:800;cursor:pointer;margin-top:8px;font-family:var(--font)">🔔 Enable Notifications</button>
+      <button class="btnlogout" id="logoutTxt" onclick="doLogout()">लॉग आउट</button>
+    </div>
+  </div>
+  <div class="btabs">
+    <button class="tbtn active" data-tab="bus" onclick="goTab('bus')"><span class="tbtnicon">🚌</span><span class="tbtnlbl" id="tl0">बस</span></button>
+    <button class="tbtn" data-tab="today" onclick="goTab('today')"><span class="tbtnicon">📅</span><span class="tbtnlbl" id="tl1">आज</span></button>
+    <button class="tbtn" data-tab="week" onclick="goTab('week')"><span class="tbtnicon">🗓️</span><span class="tbtnlbl" id="tl2">सप्ताह</span></button>
+    <button class="tbtn" data-tab="attendance" onclick="goTab('attendance')"><span class="tbtnicon">✅</span><span class="tbtnlbl" id="tl3">हाजिरी</span></button>
+    <button class="tbtn" data-tab="profile" onclick="goTab('profile')"><span class="tbtnicon">👤</span><span class="tbtnlbl" id="tl4">प्रोफाइल</span></button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyBJFGFCxzadD0CE1ojszYQp4p0H6Sz2ob8",
+  authDomain:"basu-nxt-air-schedule.firebaseapp.com",
+  databaseURL:"https://basu-nxt-air-schedule-default-rtdb.firebaseio.com",
+  projectId:"basu-nxt-air-schedule",
+  messagingSenderId:"994754056347",
+  appId:"1:994754056347:web:ff9d70a91cdb6a4466f63e"
+});
+const DB="https://basu-nxt-air-schedule-default-rtdb.firebaseio.com";
+
+let lang=localStorage.getItem('bl')||'hi';
+let S=null,transport=null,slots={},drvAtt=null;
+let leafMap=null,busMk=null,stuMk=null,rLine=null;
+let confResult=null,otpTmr=null,locItv=null,drvPhone=null,dfrPrompt=null,recapV=null;
+
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAYS_HI=['रविवार','सोमवार','मंगलवार','बुधवार','गुरुवार','शुक्रवार','शनिवार'];
+const DAYSHORT={Sunday:'Sun',Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat'};
+const SECTM={107:18,105:16,104:14,100:20,99:22,47:16,49:18,39:22,45:17,46:17,42:20,48:19,78:24,41:20,76:22,77:22,73:20,75:21,79:24,116:28,120:30,108:20,74:21};
+
+async function dbGet(p){
+  try{const r=await fetch(`${DB}/${p}.json`);return r.ok?r.json():null;}catch(e){return null;}
+}
+
+// ─── LANG ───
+const TX={
+  hi:{bus:'बस',today:'आज',week:'सप्ताह',att:'हाजिरी',prof:'प्रोफाइल',
+    pickup:'पिकअप समय',drop:'ड्रॉप समय',atStop:'बस आपके स्टॉप पर',returnH:'घर वापसी',
+    yourStop:'आपका स्टॉप',live:'लाइव ट्रैकिंग',refresh:'↻ रिफ्रेश',minAway:'मिनट में',
+    weekly:'साप्ताहिक अनुसूची',weekSub:'सभी दिनों के पिकअप और ड्रॉप समय',
+    present:'उपस्थित',absent:'अनुपस्थित',total:'कुल',pct:'उपस्थिति %',minReq:'75% (न्यूनतम)',
+    tripRec:'यात्रा रिकॉर्ड',subj:'विषय',info:'जानकारी',fellow:'साथ के छात्र',
+    drvInfo:'ड्राइवर जानकारी',install:'होम स्क्रीन पर इंस्टॉल करें',logout:'लॉग आउट',
+    ph1:'फोन 1',ph2:'फोन 2',route:'रूट',stopL:'पिकअप स्टॉप',trav:'यात्रा समय',min:'मिनट',
+    batch:'बैच',centre:'सेंटर',drvN:'ड्राइवर नाम',drvP:'ड्राइवर फोन',
+    test:'टेस्ट',special:'विशेष',cls:'कक्षा',
+    noFellow:'इस रूट पर कोई अन्य छात्र नहीं',noDrv:'ड्राइवर जानकारी नहीं',
+    noAtt:'हाजिरी डेटा नहीं मिला',noTrips:'कोई यात्रा रिकॉर्ड नहीं',
+    offline:'ऑफलाइन',live2:'लाइव',busOff:'लाइव लोकेशन उपलब्ध नहीं',
+    noClass:'आज कोई कक्षा नहीं',rest:'आराम करें!',noClassD:'कोई कक्षा नहीं',
+    todayPill:'आज',loginTag:'बस ट्रैकर – छात्र पोर्टल',
+    lt1:'अपना मोबाइल नंबर दर्ज करें',ls1:'वही नंबर जो BASU में रजिस्टर है',
+    notReg:'यह नंबर BASU में रजिस्टर नहीं है।',noData:'डेटा लोड नहीं हुआ।',
+    sending:'भेजा जा रहा है...',sendOtp:'OTP भेजें',verifying:'सत्यापित हो रहा है...',
+    verify:'सत्यापित करें',wrongOtp:'गलत OTP। फिर कोशिश करें।',loading:'डेटा लोड हो रहा है...',
+    busAt:'बस',kmAway:'km दूर है',travT:'यात्रा समय',firstCls:'पहली कक्षा',noNumAvail:'नंबर उपलब्ध नहीं'},
+  en:{bus:'Bus',today:'Today',week:'Week',att:'Attend.',prof:'Profile',
+    pickup:'Pickup Time',drop:'Drop Time',atStop:'Bus at your stop',returnH:'Return home',
+    yourStop:'Your Stop',live:'Live tracking',refresh:'↻ Refresh',minAway:'min away',
+    weekly:'Weekly Schedule',weekSub:'Pickup & drop times for all days',
+    present:'Present',absent:'Absent',total:'Total',pct:'Attendance %',minReq:'75% (min)',
+    tripRec:'Trip Records',subj:'Subjects',info:'Info',fellow:'Fellow Students',
+    drvInfo:'Driver Info',install:'Install on Home Screen',logout:'Log Out',
+    ph1:'Phone 1',ph2:'Phone 2',route:'Route',stopL:'Pickup Stop',trav:'Travel Time',min:'min',
+    batch:'Batch',centre:'Centre',drvN:'Driver Name',drvP:'Driver Phone',
+    test:'TEST',special:'Special',cls:'Class',
+    noFellow:'No other students on this route',noDrv:'Driver info not found',
+    noAtt:'No attendance data found',noTrips:'No trip records yet',
+    offline:'Offline',live2:'Live',busOff:'Live location unavailable',
+    noClass:'No classes today',rest:'Enjoy your rest!',noClassD:'No class',
+    todayPill:'TODAY',loginTag:'Bus Tracker – Student Portal',
+    lt1:'Enter your mobile number',ls1:'The number registered with BASU',
+    notReg:'This number is not registered with BASU.',noData:'Data not loaded.',
+    sending:'Sending...',sendOtp:'Send OTP',verifying:'Verifying...',
+    verify:'Verify',wrongOtp:'Wrong OTP. Try again.',loading:'Loading data...',
+    busAt:'Bus is',kmAway:'km away',travT:'Travel time',firstCls:'First class',noNumAvail:'Number unavailable'}
+};
+const t=k=>(TX[lang]||TX.hi)[k]||k;
+
+function toggleLang(){
+  lang=lang==='hi'?'en':'hi';
+  localStorage.setItem('bl',lang);
+  document.getElementById('langBtn').textContent=lang==='hi'?'EN':'हिं';
+  applyLangTexts();
+  if(S)renderAll();
+}
+
+function applyLangTexts(){
+  const ids=[['tl0','bus'],['tl1','today'],['tl2','week'],['tl3','att'],['tl4','prof'],
+    ['pickLbl','pickup'],['dropLbl','drop'],['pickSub','atStop'],['dropSub','returnH'],
+    ['stopTitle','yourStop'],['lastRef','live'],['refBtnTxt','refresh'],['etaUnit','minAway'],
+    ['weekTitle','weekly'],['weekSub','weekSub'],['lP','present'],['lA','absent'],['lT','total'],
+    ['pctLbl','pct'],['minLbl','minReq'],['tripLbl','tripRec'],['subjTit','subj'],
+    ['infoTit','info'],['fellowTit','fellow'],['drvTit','drvInfo'],['instTxt','install'],
+    ['logoutTxt','logout'],['loginTag','loginTag'],['lt1','lt1'],['ls1','ls1']];
+  ids.forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.textContent=t(k);});
+  document.getElementById('sendOtpBtn').textContent=t('sendOtp');
+  document.getElementById('verifyOtpBtn').textContent=t('verify');
+}
+
+// ─── TOAST ───
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
+
+// ─── TABS ───
+function goTab(name){
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector(`.tbtn[data-tab="${name}"]`).classList.add('active');
+  if(name==='bus')setTimeout(()=>{if(leafMap)leafMap.invalidateSize();},120);
+}
+
+// ─── TIME ───
+function parseMins(s){if(!s)return null;const[h,m]=s.split(':').map(Number);return h*60+m;}
+function fmtTime(m){if(m==null||isNaN(m))return'—';const h=Math.floor(m/60)%24,mn=m%60,p=h>=12?'PM':'AM',hh=h%12||12;return`${hh}:${String(mn).padStart(2,'0')} ${p}`;}
+function getTrav(stu){
+  if(stu.travelTime&&parseInt(stu.travelTime)>0)return parseInt(stu.travelTime);
+  const p=(stu.pickup||'').toLowerCase();
+  for(const[sec,mins]of Object.entries(SECTM)){
+    if(p.match(new RegExp('sector[- ]?'+sec+'\\b','i'))||p.match(new RegExp('sec[- ]?'+sec+'\\b','i')))return mins;
+  }
+  return 20;
+}
+function calcTimes(stu,slot){
+  const trav=getTrav(stu),st=parseMins(slot.start),en=parseMins(slot.end);
+  if(st==null||en==null)return null;
+  return{pickup:st-5-trav,drop:en+10+trav,trav};
+}
+
+// ─── SUBJECTS (array in DB) ───
+function getSubjs(stu){
+  if(Array.isArray(stu.subjects))return stu.subjects.map(s=>s.trim());
+  if(typeof stu.subjects==='string')return stu.subjects.split(',').map(s=>s.trim());
+  return[];
+}
+
+function getStudentSlots(dayName){
+  if(!S||!slots)return[];
+  const stuSubjs=getSubjs(S).map(s=>s.toLowerCase());
+  const dayShort=DAYSHORT[dayName]||dayName.slice(0,3);
+  const key=S.batch+'||'+dayShort;
+  const daySlots=slots[key];
+  if(!Array.isArray(daySlots))return[];
+  const result=[];
+  for(const slot of daySlots){
+    let inc=false;
+    if(slot.isSpecial&&slot.includeTransport){inc=true;}
+    else if(slot.isTest){inc=stuSubjs.includes('test');}
+    else if(slot.subj){
+      const sl=slot.subj.toLowerCase();
+      if(stuSubjs.includes(sl)){inc=true;}
+      else if(sl.includes('/')||sl.includes('_')){
+        const parts=sl.split(/[\/_ ]+/).map(p=>p.trim()).filter(p=>p.length>2);
+        inc=parts.some(p=>stuSubjs.some(ss=>ss.includes(p)||p.includes(ss)));
+      }else{
+        inc=stuSubjs.some(ss=>ss.includes(sl)||sl.includes(ss));
+      }
+    }
+    if(inc){
+      const dup=result.find(x=>x.start===slot.start&&x.subj===slot.subj);
+      if(!dup)result.push(slot);
+    }
+  }
+  return result.sort((a,b)=>(parseMins(a.start)||0)-(parseMins(b.start)||0));
+}
+
+// ─── LOGIN ───
+function setupRecap(){
+  try{if(recapV)recapV.clear();recapV=new firebase.auth.RecaptchaVerifier('recaptcha-container',{size:'normal',callback:()=>{}});recapV.render().catch(()=>{});}catch(e){}
+}
+
+document.getElementById('phoneInput').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,10);});
+
+document.getElementById('sendOtpBtn').addEventListener('click',async()=>{
+  const ph=document.getElementById('phoneInput').value.trim();
+  if(ph.length!==10){document.getElementById('phoneErr').textContent='10 अंकों का नंबर दर्ज करें';return;}
+  document.getElementById('phoneErr').textContent='';
+  const btn=document.getElementById('sendOtpBtn');
+  btn.disabled=true;btn.textContent=t('sending');
+  const tr=await dbGet('transport');
+  if(!tr||!tr.students){document.getElementById('phoneErr').textContent=t('noData');btn.disabled=false;btn.textContent=t('sendOtp');return;}
+  transport=tr;
+  const found=tr.students.find(s=>s.phone===ph||s.phone1===ph||s.phone2===ph);
+  if(!found){document.getElementById('phoneErr').textContent=t('notReg');btn.disabled=false;btn.textContent=t('sendOtp');return;}
+  try{
+    if(!recapV)setupRecap();
+    confResult=await firebase.auth().signInWithPhoneNumber('+91'+ph,recapV);
+    document.getElementById('stepPhone').style.display='none';
+    document.getElementById('stepOtp').style.display='block';
+    document.getElementById('otpSentTo').textContent='OTP sent to +91'+ph;
+    startTimer();
+    document.querySelectorAll('.otpbox')[0].focus();
+  }catch(err){
+    document.getElementById('phoneErr').textContent='Error: '+err.message;
+    btn.disabled=false;btn.textContent=t('sendOtp');
+  }
+});
+
+document.querySelectorAll('.otpbox').forEach((box,i,boxes)=>{
+  box.addEventListener('input',e=>{
+    const v=e.target.value.replace(/\D/,'');e.target.value=v;
+    if(v)e.target.classList.add('filled');
+    if(v&&i<boxes.length-1)boxes[i+1].focus();
+    if([...boxes].map(b=>b.value).join('').length===6)doVerify();
+  });
+  box.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!box.value&&i>0){boxes[i-1].focus();boxes[i-1].value='';boxes[i-1].classList.remove('filled');}});
+  box.addEventListener('paste',e=>{const d=e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);if(d){e.preventDefault();[...d].forEach((c,idx)=>{if(boxes[idx]){boxes[idx].value=c;boxes[idx].classList.add('filled');}});if(d.length===6){boxes[5].focus();setTimeout(doVerify,100);}}});
+});
+
+document.getElementById('verifyOtpBtn').addEventListener('click',doVerify);
+document.getElementById('resendOtpBtn').addEventListener('click',()=>{
+  document.getElementById('stepOtp').style.display='none';
+  document.getElementById('stepPhone').style.display='block';
+  document.querySelectorAll('.otpbox').forEach(b=>{b.value='';b.classList.remove('filled');});
+  if(otpTmr)clearInterval(otpTmr);
+  const btn=document.getElementById('sendOtpBtn');btn.disabled=false;btn.textContent=t('sendOtp');
+  setupRecap();
+});
+
+async function doVerify(){
+  const otp=[...document.querySelectorAll('.otpbox')].map(b=>b.value).join('');
+  if(otp.length<6)return;
+  const btn=document.getElementById('verifyOtpBtn');btn.disabled=true;btn.textContent=t('verifying');
+  try{await confResult.confirm(otp);}
+  catch(err){document.getElementById('otpErr').textContent=t('wrongOtp');btn.disabled=false;btn.textContent=t('verify');document.querySelectorAll('.otpbox').forEach(b=>{b.value='';b.classList.remove('filled');});document.querySelectorAll('.otpbox')[0].focus();}
+}
+
+function startTimer(){
+  let s=60;const el=document.getElementById('otpTimer');if(otpTmr)clearInterval(otpTmr);
+  otpTmr=setInterval(()=>{s--;el.textContent=`Resend in (${s}s)`;if(s<=0){clearInterval(otpTmr);el.textContent='';}},1000);
+}
+
+// ─── AUTH STATE ───
+firebase.auth().onAuthStateChanged(async user=>{
+  if(user){showSplash(t('loading'));await initApp(user);}
+  else{hideSplash();showLogin();}
+});
+
+async function initApp(user){
+  if(!transport)transport=await dbGet('transport');
+  if(!transport||!transport.students){hideSplash();showLogin();return;}
+  const ph=user.phoneNumber?user.phoneNumber.replace('+91',''):'';
+  S=transport.students.find(s=>s.phone===ph||s.phone1===ph||s.phone2===ph);
+  if(!S){hideSplash();showLogin();firebase.auth().signOut();return;}
+  const sdata=await dbGet('schedule/slots');
+  slots=sdata||{};
+  hideSplash();showApp();
+  applyLangTexts();
+  renderAll();
+  initMap();
+  loadDrvLoc();
+  loadAtt();
+  if(locItv)clearInterval(locItv);
+  locItv=setInterval(loadDrvLoc,12000);
+  setTimeout(()=>setupFCM(S.id),2000);startScheduleListener();
+}
+
+// ─── REAL-TIME SCHEDULE LISTENER ───
+let scheduleListenerActive=false;
+function startScheduleListener(){
+  if(scheduleListenerActive)return;
+  scheduleListenerActive=true;
+  // Poll every 30 seconds for schedule changes
+  setInterval(async()=>{
+    const newSlots=await dbGet('schedule/slots');
+    if(!newSlots)return;
+    const newStr=JSON.stringify(newSlots);
+    const oldStr=JSON.stringify(slots);
+    if(newStr!==oldStr){
+      slots=newSlots;
+      renderToday();renderWeek();
+      showFgNotif('📅 Schedule Updated','Timetable has been updated!','schedule_update');
+    }
+  },30000);
+}
+
+function showSplash(m){document.getElementById('splash').style.display='flex';document.getElementById('splashSub').textContent=m||'';}
+function hideSplash(){document.getElementById('splash').style.display='none';}
+function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('app').style.display='none';setupRecap();applyLangTexts();}
+function showApp(){document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='flex';}
+function doLogout(){if(locItv)clearInterval(locItv);firebase.auth().signOut();S=null;transport=null;slots={};}
+
+// ─── RENDER ───
+function renderAll(){
+  if(!S)return;
+  document.getElementById('topName').textContent=S.name||'—';
+  renderBus();renderToday();renderWeek();renderProfile();
+}
+
+function renderBus(){
+  const route=(transport.routes||[]).find(r=>r.route===S.route);
+  document.getElementById('busRoute').textContent=S.route||'—';
+  document.getElementById('stopName').textContent=S.pickup||'—';
+  if(route){drvPhone=route.phone;document.getElementById('drvName').textContent=route.driver||'—';document.getElementById('drvRoute').textContent=route.route+' · '+(route.vehicle||'');document.getElementById('drvCard').style.display='flex';}
+  const today=DAYS[new Date().getDay()];
+  const sl=getStudentSlots(today);
+  if(sl.length){
+    const first=sl[0],last=sl[sl.length-1];
+    const pt=calcTimes(S,first),dt=calcTimes(S,last);
+    if(pt){
+      document.getElementById('pickTime').textContent=fmtTime(pt.pickup);
+      document.getElementById('dropTime').textContent=dt?fmtTime(dt.drop):fmtTime(pt.drop);
+      document.getElementById('stopSub').textContent=t('travT')+': '+pt.trav+' '+t('min')+' | '+t('firstCls')+': '+first.start;
+    }
+  }else{
+    document.getElementById('pickTime').textContent=t('noClass');
+    document.getElementById('dropTime').textContent='—';
+  }
+}
+
+function callDrv(){if(drvPhone)window.open('tel:'+drvPhone);else toast(t('noNumAvail'));}
+
+// ─── MAP ───
+function initMap(){
+  if(leafMap)return;
+  leafMap=L.map('map',{zoomControl:true,attributionControl:false}).setView([28.6139,77.209],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(leafMap);
+  const si=L.divIcon({html:'<div style="background:#2563eb;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>',iconSize:[14,14],iconAnchor:[7,7]});
+  stuMk=L.marker([28.6139,77.209],{icon:si}).addTo(leafMap).bindPopup(`<b>${S.name}</b><br>${S.pickup||''}`);
+}
+
+async function loadDrvLoc(){
+  if(!S||!S.route)return;
+  let loc=await dbGet('driverLoc/'+encodeURIComponent(S.route));
+  if(!loc)loc=await dbGet('driverLoc/'+S.route.replace(/\s+/g,'_').toLowerCase());
+  updBusMarker(loc);
+}
+
+function updBusMarker(loc){
+  if(!loc||!loc.lat||!loc.lng){
+    document.getElementById('busBadge').innerHTML=`<span class="badge bgrd">⚠ ${t('offline')}</span>`;
+    document.getElementById('busTxt').textContent=t('busOff');
+    document.getElementById('busEta').innerHTML=`— <small id="etaUnit">${t('minAway')}</small>`;
+    return;
+  }
+  document.getElementById('busBadge').innerHTML=`<span class="badge bgr">🟢 ${t('live2')}</span>`;
+  const bi=L.divIcon({html:'<div style="font-size:28px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))">🚌</div>',iconSize:[32,32],iconAnchor:[16,16]});
+  if(!leafMap)return;
+  if(busMk)busMk.setLatLng([loc.lat,loc.lng]);
+  else busMk=L.marker([loc.lat,loc.lng],{icon:bi}).addTo(leafMap).bindPopup('Current bus location');
+  const d=dist(loc.lat,loc.lng,28.6139,77.209);
+  const eta=Math.round(d/0.4);
+  document.getElementById('busEta').innerHTML=`${eta} <small id="etaUnit">${t('minAway')}</small>`;
+  document.getElementById('busTxt').textContent=`${t('busAt')} ${d.toFixed(1)} ${t('kmAway')}`;
+  const ts=loc.ts?new Date(loc.ts):new Date();
+  document.getElementById('lastRef').textContent=ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  if(rLine)leafMap.removeLayer(rLine);
+  rLine=L.polyline([[loc.lat,loc.lng],[28.6139,77.209]],{color:'#f97316',weight:3,dashArray:'8,6',opacity:.7}).addTo(leafMap);
+  leafMap.fitBounds([[loc.lat,loc.lng],[28.6139,77.209]],{padding:[40,40]});
+}
+
+function dist(la1,ln1,la2,ln2){const R=6371,dl=(la2-la1)*Math.PI/180,dn=(ln2-ln1)*Math.PI/180;const a=Math.sin(dl/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dn/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+function doRefresh(){toast(lang==='hi'?'रिफ्रेश हो रहा है...':'Refreshing...');loadDrvLoc();}
+
+// ─── TODAY ───
+function renderToday(){
+  const now=new Date(),dn=DAYS[now.getDay()];
+  document.getElementById('todayLbl').textContent=lang==='hi'
+    ?`${DAYS_HI[now.getDay()]} – ${now.toLocaleDateString('hi-IN',{day:'numeric',month:'long',year:'numeric'})}`
+    :`${dn} – ${now.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}`;
+  const sl=getStudentSlots(dn),c=document.getElementById('todayContent');
+  if(!sl.length){c.innerHTML=`<div class="noclass"><div class="nci">🎉</div><div class="nct">${t('noClass')}</div><div class="ncs">${t('rest')}</div></div>`;return;}
+  c.innerHTML=sl.map(slot=>{
+    const type=slot.isTest?'test':slot.isSpecial?'special':'regular';
+    const badge=slot.isTest?`<span class="badge bgrd">📝 ${t('test')}</span>`:slot.isSpecial?`<span class="badge bgy">⭐ ${t('special')}</span>`:'';
+    const pt=calcTimes(S,slot);
+    const pd=pt?`<span>🏠 ${fmtTime(pt.pickup)}</span><span>🏡 ${fmtTime(pt.drop)}</span>`:'';
+    return`<div class="citem ${type}"><div class="crow"><div class="csubj">${slot.subj||'—'} ${badge}</div><div class="ctime">${slot.start}–${slot.end}</div></div><div class="cmeta">${slot.teacher?`<span>👨‍🏫 ${slot.teacher}</span>`:''}${slot.room?`<span>🏛️ ${slot.room}</span>`:''}${pd}</div></div>`;
+  }).join('');
+}
+
+// ─── WEEK ───
+function renderWeek(){
+  const ti=new Date().getDay(),order=[...Array(7)].map((_,i)=>(ti+i)%7);
+  document.getElementById('weekContent').innerHTML=order.map(di=>{
+    const dn=DAYS[di],sl=getStudentSlots(dn),isT=di===ti;
+    const dlbl=lang==='hi'?DAYS_HI[di]:dn;
+    const pill=isT?`<span class="todaypill">${t('todayPill')}</span>`:'';
+    if(!sl.length)return`<div class="dsect"><div class="dhdr"><div class="dhname">${dlbl}</div>${pill}<div class="dhcount">${t('noClassD')}</div></div></div>`;
+    const first=sl[0],last=sl[sl.length-1];
+    const pt=calcTimes(S,first),dt=calcTimes(S,last);
+    const tg=pt?`<div class="tgrid" style="margin-bottom:8px"><div class="tcell"><div class="tcicon">🏠→🚌</div><div class="tclbl">${t('pickup')}</div><div class="tctime">${fmtTime(pt.pickup)}</div></div><div class="tcell"><div class="tcicon">🚌→🏠</div><div class="tclbl">${t('drop')}</div><div class="tctime">${dt?fmtTime(dt.drop):fmtTime(pt.drop)}</div></div></div>`:'';
+    const rows=sl.map(slot=>{
+      const bc=slot.isTest?'bgrd':slot.isSpecial?'bgy':'bgb',lbl=slot.isTest?t('test'):slot.isSpecial?t('special'):t('cls');
+      return`<div class="wrow"><div class="wicon">${slot.isTest?'📝':slot.isSpecial?'⭐':'📚'}</div><div class="winfo"><div class="wlbl">${slot.subj}</div><div class="wtime">${slot.start}–${slot.end}</div><div class="wsub">${[slot.teacher,slot.room].filter(Boolean).join(' · ')}</div></div><span class="badge ${bc}">${lbl}</span></div>`;
+    }).join('');
+    return`<div class="dsect"><div class="dhdr"><div class="dhname">${dlbl}</div>${pill}<div class="dhcount">${sl.length} ${t('cls')}</div></div>${tg}${rows}</div>`;
+  }).join('');
+}
+
+// ─── ATTENDANCE ───
+async function loadAtt(){drvAtt=await dbGet('driverAtt');renderAtt();}
+function renderAtt(){
+  if(!drvAtt||!S){document.getElementById('attList').innerHTML=`<div class="emptystate"><div class="ei">📊</div><div class="et">${t('noAtt')}</div></div>`;return;}
+  let p=0,a=0;const trips=[];
+  for(const[id,att]of Object.entries(drvAtt)){
+    if(!att.att)continue;
+    const st=att.att[S.id];if(!st)continue;
+    const isP=st==='p';if(isP)p++;else a++;
+    trips.push({id,route:att.route,type:att.type,depTime:att.depTime,savedAt:att.savedAt,p:isP});
+  }
+  const tot=p+a,pct=tot?Math.round(p/tot*100):0;
+  document.getElementById('atP').textContent=p;document.getElementById('atA').textContent=a;document.getElementById('atT').textContent=tot;document.getElementById('atPct').textContent=pct+'%';
+  const bar=document.getElementById('atBar');bar.style.width=pct+'%';bar.className='atfill'+(pct<50?' danger':pct<75?' warn':'');
+  trips.sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));
+  document.getElementById('attList').innerHTML=trips.length?trips.map(tr=>{
+    const dt=tr.savedAt?new Date(tr.savedAt).toLocaleDateString(lang==='hi'?'hi-IN':'en-IN',{day:'numeric',month:'short',year:'numeric'}):'—';
+    const tl=tr.type==='pickup'?(lang==='hi'?'पिकअप':'Pickup'):(lang==='hi'?'ड्रॉप':'Drop');
+    const cls=tr.p?'p':'a';const lbl=tr.p?'✅ '+t('present'):'❌ '+t('absent');
+    return`<div class="tripitem"><div class="tripdot ${cls}"></div><div class="tripinfo"><div class="tripdate">${dt} – ${tl}</div><div class="triptype">${t('route')} ${tr.route||'—'} ${tr.depTime?'· '+tr.depTime:''}</div></div><div class="tripst ${cls}">${lbl}</div></div>`;
+  }).join(''):`<div class="emptystate"><div class="ei">📋</div><div class="et">${t('noTrips')}</div></div>`;
+}
+
+// ─── PROFILE ───
+function renderProfile(){
+  if(!S)return;
+  const ini=(S.name||'S').charAt(0).toUpperCase();
+  document.getElementById('pAvatar').textContent=ini;
+  document.getElementById('pName').textContent=S.name||'—';
+  document.getElementById('pBatch').textContent=t('batch')+': '+(S.batch||'—')+' · '+t('centre')+': '+((S.centre||'').toUpperCase());
+  document.getElementById('pId').textContent='ID: '+(S.id||'—');
+  const subjs=getSubjs(S);
+  document.getElementById('pillRow').innerHTML=subjs.map(s=>`<span class="pill">${s}</span>`).join('');
+  document.getElementById('infoRows').innerHTML=[
+    ['📞',t('ph1'),S.phone1||S.phone||'—'],
+    ['📱',t('ph2'),S.phone2||'—'],
+    ['🚌',t('route'),S.route||'—'],
+    ['📍',t('stopL'),S.pickup||'—'],
+    ['⏱️',t('trav'),getTrav(S)+' '+t('min')],
+  ].map(([ic,lb,vl])=>`<div class="irow"><div class="ilbl">${ic} ${lb}</div><div class="ival">${vl}</div></div>`).join('');
+  const fellows=(transport.students||[]).filter(st=>st.route===S.route&&st.id!==S.id);
+  document.getElementById('fellowList').innerHTML=fellows.length?fellows.map(f=>`<div class="fellowitem"><div class="fellowav">${(f.name||'?').charAt(0)}</div><div><div class="fellowname">${f.name}</div><div class="fellowstop">${f.pickup||'—'}</div></div></div>`).join(''):`<div style="font-size:13px;color:var(--text3);padding:8px 0">${t('noFellow')}</div>`;
+  const route=(transport.routes||[]).find(r=>r.route===S.route);
+  document.getElementById('drvProfile').innerHTML=route?[
+    ['👨‍✈️',t('drvN'),route.driver||'—'],
+    ['📞',t('drvP'),route.phone?`<a href="tel:${route.phone}" style="color:var(--orange);font-weight:800">${route.phone}</a>`:'—'],
+    ['🚌',t('route'),route.route||'—'],
+    ['🚐','Vehicle',route.vehicle||'—'],
+  ].map(([ic,lb,vl])=>`<div class="irow"><div class="ilbl">${ic} ${lb}</div><div class="ival">${vl}</div></div>`).join(''):`<div style="font-size:13px;color:var(--text3)">${t('noDrv')}</div>`;
+}
+
+// ─── INSTALL ───
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dfrPrompt=e;});
+function doInstall(){
+  if(dfrPrompt){dfrPrompt.prompt();dfrPrompt.userChoice.then(()=>{dfrPrompt=null;});return;}
+  const inst=document.getElementById('instInstr');
+  const isIOS=/iphone|ipad/i.test(navigator.userAgent);
+  const steps=isIOS?[lang==='hi'?'नीचे Share (□↑) बटन दबाएं':'Tap Share (□↑) at the bottom',lang==='hi'?'"Add to Home Screen" चुनें':'Select "Add to Home Screen"',lang==='hi'?'"Add" दबाएं':'Tap "Add"']:[lang==='hi'?'ऊपर ⋮ Menu दबाएं':'Tap ⋮ Menu',lang==='hi'?'"Add to Home screen" चुनें':'Select "Add to Home screen"',lang==='hi'?'"Install" दबाएं':'Tap "Install"'];
+  inst.innerHTML=`<div style="font-size:14px;font-weight:800;margin-bottom:12px;color:var(--orange)">${isIOS?(lang==='hi'?'iOS पर इंस्टॉल':'Install on iOS'):(lang==='hi'?'Android पर इंस्टॉल':'Install on Android')}</div>`+steps.map((s,i)=>`<div class="instep"><div class="isnum">${i+1}</div><div class="istxt">${s}</div></div>`).join('');
+  inst.classList.toggle('show');
+}
+
+// ─── ONESIGNAL NOTIFICATIONS ───
+async function setupFCM(studentId){
+  if(!window.OneSignal)return;
+  try{
+    await OneSignal.Notifications.requestPermission();
+    if(studentId)await OneSignal.login(studentId);
+    await OneSignal.User.addTags({
+      studentId:studentId||'',
+      route:S?.route||'',
+      batch:S?.batch||'',
+      name:S?.name||''
+    });
+    // Save OneSignal player ID to Firebase
+    const playerId=await OneSignal.User.PushSubscription.id;
+    if(playerId&&studentId){
+      await fetch(`${DB}/osTokens/${studentId}.json`,{method:'PUT',body:JSON.stringify(playerId),headers:{'Content-Type':'application/json'}});
+    }
+    console.log('OneSignal setup done');
+    updateNotifBtn(true);
+  }catch(e){console.warn('OneSignal error:',e);}
+}
+
+function showFgNotif(title,body,type){
+  const el=document.getElementById('toast');
+  if(!el)return;
+  el.innerHTML=`<div style="max-width:280px"><div style="font-size:12px;font-weight:800;margin-bottom:2px">${title||'BASU Classes'}</div><div style="font-size:11px;opacity:.85">${body||''}</div></div>`;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),5000);
+  if(type==='pickup_alert'||type==='drop_alert')setTimeout(()=>goTab('bus'),600);
+  else if(type==='schedule_update'){setTimeout(()=>{renderToday();renderWeek();goTab('today');},600);}
+}
+
+function updateNotifBtn(on){
+  const btn=document.getElementById('notifEnableBtn');
+  if(!btn)return;
+  btn.textContent=on?'🔔 Notifications On ✅':'🔔 Enable Notifications';
+  btn.style.borderColor=on?'rgba(22,163,74,.3)':'rgba(37,99,235,.25)';
+  btn.style.background=on?'rgba(22,163,74,.08)':'rgba(37,99,235,.08)';
+  btn.style.color=on?'var(--green)':'var(--blue)';
+}
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+setTimeout(()=>{if(document.getElementById('splash').style.display!=='none'&&!firebase.auth().currentUser){hideSplash();showLogin();}},5000);
+</script>
+</body>
+</html>

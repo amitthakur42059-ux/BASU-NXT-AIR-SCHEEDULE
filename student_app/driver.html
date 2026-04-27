@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1e40af">
+<meta name="mobile-web-app-capable" content="yes">
+<title>BASU Driver App</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{--blue:#1e40af;--blue2:#2563eb;--orange:#f97316;--green:#16a34a;--red:#dc2626;--yellow:#d97706;--bg:#f0f4ff;--card:#fff;--border:#d0d9f0;--text:#111827;--text2:#6b7280;--font:system-ui,-apple-system,sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+#splash{position:fixed;inset:0;background:linear-gradient(135deg,#1e40af,#f97316);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;}
+.splash-icon{font-size:64px;animation:bob 1s ease infinite alternate;}
+@keyframes bob{from{transform:translateY(0);}to{transform:translateY(-12px);}}
+.splash-title{font-size:26px;font-weight:800;color:#fff;}
+.splash-sub{font-size:14px;color:rgba(255,255,255,.8);}
+#loginScreen{display:none;min-height:100vh;background:linear-gradient(160deg,#eff6ff,#fff7ed);align-items:center;justify-content:center;padding:24px;}
+.login-card{background:#fff;border-radius:20px;padding:32px 24px;box-shadow:0 8px 32px rgba(37,99,235,.15);width:100%;max-width:380px;}
+.login-logo{text-align:center;font-size:52px;margin-bottom:10px;}
+.login-title{text-align:center;font-size:22px;font-weight:800;color:var(--blue);margin-bottom:4px;}
+.login-sub{text-align:center;font-size:13px;color:var(--text2);margin-bottom:24px;}
+.phone-wrap{display:flex;align-items:center;background:#f0f4ff;border:2px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;}
+.phone-flag{padding:0 12px;font-size:20px;border-right:1px solid var(--border);height:52px;display:flex;align-items:center;}
+.phone-pfx{padding:0 8px;font-size:16px;font-weight:700;color:var(--text2);}
+#phoneInput{flex:1;background:transparent;border:none;outline:none;font-size:20px;font-weight:800;height:52px;padding:0 12px 0 0;letter-spacing:2px;color:var(--text);}
+.btn-main{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-size:17px;font-weight:800;cursor:pointer;}
+.btn-main:disabled{opacity:.5;}
+.err-msg{color:var(--red);font-size:13px;margin-top:10px;text-align:center;font-weight:600;}
+#app{display:none;flex-direction:column;min-height:100vh;}
+.header{background:linear-gradient(90deg,#1e3a8a,#2563eb);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(37,99,235,.3);}
+.header-left{display:flex;align-items:center;gap:10px;}
+.hicon{font-size:24px;}
+.hname{font-size:15px;font-weight:800;color:#fff;line-height:1.2;}
+.hroute{font-size:11px;color:rgba(255,255,255,.75);}
+.obadge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(220,38,38,.8);color:#fff;}
+.obadge.on{background:rgba(22,163,74,.8);}
+.content{padding:12px;padding-bottom:75px;}
+.card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 10px rgba(37,99,235,.06);}
+.ctitle{font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;}
+#map{height:220px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:10px;}
+.gps-bar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;margin-bottom:10px;font-size:12px;font-weight:600;}
+.gps-ok{background:#ecfdf5;color:var(--green);border:1px solid #a7f3d0;}
+.gps-err{background:#fef2f2;color:var(--red);border:1px solid #fca5a5;}
+.gps-wait{background:#fffbeb;color:var(--yellow);border:1px solid #fcd34d;}
+.gps-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;animation:blink 1.5s ease infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.track-row{display:flex;align-items:center;justify-content:space-between;}
+.track-info h3{font-size:15px;font-weight:700;}
+.track-info p{font-size:12px;color:var(--text2);margin-top:2px;}
+.toggle{position:relative;width:54px;height:28px;cursor:pointer;}
+.toggle input{opacity:0;width:0;height:0;}
+.tslider{position:absolute;inset:0;background:#d1d5db;border-radius:28px;transition:.3s;}
+.tslider::before{content:'';position:absolute;width:20px;height:20px;left:4px;bottom:4px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 2px 4px rgba(0,0,0,.2);}
+input:checked+.tslider{background:var(--green);}
+input:checked+.tslider::before{transform:translateX(26px);}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.stat{background:#fff;border:1.5px solid var(--border);border-radius:11px;padding:11px 6px;text-align:center;}
+.sv{font-size:22px;font-weight:800;color:var(--blue);}
+.sv.g{color:var(--green);}.sv.o{color:var(--orange);}
+.sl{font-size:10px;color:var(--text2);font-weight:700;margin-top:2px;}
+.alert-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.abtn{padding:13px 8px;border:2px solid;border-radius:11px;font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--font);}
+.abtn:active{transform:scale(.97);}
+.abtn .ai{font-size:20px;}
+.ab-pickup{color:var(--green);border-color:#a7f3d0;background:#ecfdf5;}
+.ab-drop{color:#c2410c;border-color:#fdba74;background:#fff7ed;}
+.ab-delay{color:#92400e;border-color:#fcd34d;background:#fefce8;}
+.ab-emergency{color:var(--red);border-color:#fca5a5;background:#fef2f2;}
+
+/* DAY SECTION */
+.day-section{margin-bottom:16px;}
+.day-hdr{display:flex;align-items:center;gap:8px;padding:9px 13px;background:linear-gradient(90deg,rgba(37,99,235,.1),transparent);border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;}
+.day-name{font-size:14px;font-weight:800;color:var(--blue);flex:1;}
+.today-pill{background:var(--orange);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;}
+.day-meta{font-size:11px;color:var(--text2);}
+.day-body{display:block;}
+
+/* TRIP CARD */
+.trip-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;}
+.trip-header{padding:11px 13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
+.trip-header.pickup{background:linear-gradient(90deg,#ecfdf5,#fff);}
+.trip-header.drop{background:linear-gradient(90deg,#fff7ed,#fff);}
+.trip-icon{font-size:18px;}
+.trip-type-lbl{font-size:12px;font-weight:800;flex:1;}
+.trip-type-lbl.p{color:var(--green);}
+.trip-type-lbl.d{color:#c2410c;}
+.trip-depart-time{font-size:17px;font-weight:800;color:var(--blue);}
+.trip-body{padding:10px 13px;}
+.trip-summary{font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.6;}
+
+/* STOP LIST */
+.stop-list{display:flex;flex-direction:column;gap:0;}
+.stop-row{display:flex;align-items:flex-start;gap:8px;position:relative;padding:4px 0;}
+.stop-row:not(:last-child)::before{content:'';position:absolute;left:5px;top:14px;bottom:-4px;width:2px;background:var(--border);}
+.stop-circle{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:2px;}
+.stop-circle.basu{background:var(--blue);border:2px solid #fff;box-shadow:0 0 0 2px var(--blue);}
+.stop-circle.pickup{background:var(--green);}
+.stop-circle.drop{background:var(--orange);}
+.stop-info{flex:1;}
+.stop-time-lbl{font-size:12px;font-weight:800;color:var(--blue);}
+.stop-name-lbl{font-size:12px;color:var(--text);}
+.stop-students{font-size:11px;color:var(--text2);}
+
+/* STUDENT LIST */
+.stu-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
+.stu-item:last-child{border-bottom:none;}
+.stu-av{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;}
+.stu-name{font-size:14px;font-weight:700;}
+.stu-sub{font-size:11px;color:var(--text2);}
+.stu-times{text-align:right;flex-shrink:0;}
+.stu-pt{font-size:13px;font-weight:800;color:var(--green);}
+.stu-dt{font-size:11px;color:var(--orange);}
+.stu-off{font-size:11px;font-weight:700;color:var(--yellow);}
+
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1.5px solid var(--border);display:flex;padding:6px 0 10px;z-index:50;}
+.nbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:none;background:transparent;cursor:pointer;color:var(--text2);font-size:10px;font-weight:700;font-family:var(--font);}
+.nbtn.active{color:var(--orange);}
+.nicon{font-size:20px;}
+.page{display:none;}
+.page.active{display:block;}
+#toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;z-index:999;transition:transform .3s;white-space:nowrap;max-width:90vw;text-align:center;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+.coords{font-size:10px;color:var(--text2);margin-top:5px;font-family:monospace;}
+.empty{text-align:center;padding:24px;color:var(--text2);font-size:13px;}
+.no-trip{text-align:center;padding:12px;background:#f9fafb;border-radius:8px;color:var(--text2);font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="splash-icon">🚌</div>
+  <div class="splash-title">BASU Driver</div>
+  <div class="splash-sub" id="splashSub">लोड हो रहा है...</div>
+</div>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">👨‍✈️</div>
+    <div class="login-title">Driver Login</div>
+    <div class="login-sub">Registered mobile number डालें</div>
+    <div class="phone-wrap">
+      <div class="phone-flag">🇮🇳</div>
+      <div class="phone-pfx">+91</div>
+      <input type="tel" id="phoneInput" maxlength="10" inputmode="numeric" placeholder="10 अंक">
+    </div>
+    <button class="btn-main" id="loginBtn" onclick="doLogin()">Login करें</button>
+    <div class="err-msg" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="header">
+    <div class="header-left">
+      <span class="hicon">🚌</span>
+      <div>
+        <div class="hname" id="hName">Driver</div>
+        <div class="hroute" id="hRoute">Route ---</div>
+      </div>
+    </div>
+    <div class="obadge" id="onlineBadge">● Offline</div>
+  </div>
+
+  <div class="content">
+
+    <!-- PAGE: TRACKING -->
+    <div class="page active" id="page-tracking">
+      <div class="gps-bar gps-wait" id="gpsBar">
+        <span class="gps-dot"></span>
+        <span id="gpsText">GPS प्राप्त हो रहा है...</span>
+      </div>
+      <div id="map"></div>
+      <div class="coords" id="coordsText"></div>
+      <div class="card">
+        <div class="ctitle">लाइव ट्रैकिंग</div>
+        <div class="track-row">
+          <div class="track-info">
+            <h3>Location Share करें</h3>
+            <p id="trackStatusText">Students को location नहीं दिख रही</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="trackToggle" onchange="toggleTracking(this.checked)">
+            <span class="tslider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="sv" id="stTotal">0</div><div class="sl">कुल छात्र</div></div>
+        <div class="stat"><div class="sv g" id="stToday">0</div><div class="sl">आज हैं</div></div>
+        <div class="stat"><div class="sv o" id="stTrips">0</div><div class="sl">आज की trips</div></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Alert भेजें</div>
+        <div class="alert-grid">
+          <button class="abtn ab-pickup" onclick="sendAlert('🚌 Bus aa rahi hai!','Pickup ke liye ready rahein')">
+            <span class="ai">🏠→🚌</span>Pickup Alert
+          </button>
+          <button class="abtn ab-drop" onclick="sendAlert('🏠 Drop time!','Bus drop ke liye aa rahi hai')">
+            <span class="ai">🚌→🏠</span>Drop Alert
+          </button>
+          <button class="abtn ab-delay" onclick="sendAlert('⏰ Bus late hai','Bus thodi der late chalegi')">
+            <span class="ai">⏰</span>Late Alert
+          </button>
+          <button class="abtn ab-emergency" onclick="sendAlert('🚨 Emergency!','Bus emergency mein hai. Parents se contact karein')">
+            <span class="ai">🚨</span>Emergency
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: TRIPS -->
+    <div class="page" id="page-trips">
+      <div id="tripsContent"><div class="empty">Loading...</div></div>
+    </div>
+
+    <!-- PAGE: STUDENTS -->
+    <div class="page" id="page-students">
+      <div class="card">
+        <div class="ctitle" id="stuTitle">आज के छात्र</div>
+        <div id="stuList"><div class="empty">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- PAGE: PROFILE -->
+    <div class="page" id="page-profile">
+      <div class="card" style="text-align:center;padding:22px;">
+        <div style="font-size:48px;margin-bottom:10px;">👨‍✈️</div>
+        <div style="font-size:19px;font-weight:800;" id="pName">---</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px;" id="pRoute">---</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;" id="pVehicle">---</div>
+      </div>
+      <div class="card">
+        <div class="ctitle">आज की जानकारी</div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;border-bottom:1px solid var(--border);">
+          <span>Tracking समय</span><span style="font-weight:700;" id="trackTime">0 मिनट</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;border-bottom:1px solid var(--border);">
+          <span>Alert भेजे</span><span style="font-weight:700;" id="alertCount">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
+          <span>Last GPS Update</span><span style="font-weight:700;" id="lastUpdate">---</span>
+        </div>
+      </div>
+      <button onclick="doLogout()" style="width:100%;padding:13px;border:1.5px solid #fee2e2;border-radius:12px;background:#fff;color:var(--red);font-size:14px;font-weight:800;cursor:pointer;margin-top:4px;font-family:var(--font);">
+        🚪 Logout
+      </button>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nbtn active" id="nav-tracking" onclick="switchPage('tracking')">
+      <span class="nicon">📍</span>Live
+    </button>
+    <button class="nbtn" id="nav-trips" onclick="switchPage('trips')">
+      <span class="nicon">🗓️</span>Trips
+    </button>
+    <button class="nbtn" id="nav-students" onclick="switchPage('students')">
+      <span class="nicon">👥</span>छात्र
+    </button>
+    <button class="nbtn" id="nav-profile" onclick="switchPage('profile')">
+      <span class="nicon">👤</span>Profile
+    </button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const DB='https://basu-nxt-air-schedule-default-rtdb.firebaseio.com';
+const OS_APP_ID='228f183d-3c5e-41bd-aade-8f62c7db7c96';
+const OS_API_KEY='os_v2_app_ekhrqpj4lza33kw6r5rmpw34sz7ag7f4ar3ulnmiyxp426ydm4kceuojro2nsdhqqb7z7beothfx3f2cnoluqpr4c4nerxphqyjde3i';
+
+// BASU Classes exact location
+const BASU_LAT=28.5556567, BASU_LNG=77.3735081;
+
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAYS_HI=['रविवार','सोमवार','मंगलवार','बुधवार','गुरुवार','शुक्रवार','शनिवार'];
+const DAY_SHORT={Sunday:'Sun',Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat'};
+
+// Sector-wise approximate coordinates (Noida/Greater Noida)
+const SECTOR_COORDS={
+  '39':[28.5706,77.3354],'42':[28.5612,77.3201],'45':[28.5535,77.3387],
+  '46':[28.5497,77.3456],'47':[28.5559,77.3487],'48':[28.5480,77.3510],
+  '49':[28.5556,77.3735],'73':[28.5740,77.3610],'74':[28.5780,77.3650],
+  '75':[28.5820,77.3690],'76':[28.5860,77.3720],'77':[28.5900,77.3750],
+  '78':[28.5940,77.3780],'99':[28.6139,77.3900],'100':[28.6100,77.3850],
+  '104':[28.5300,77.3900],'105':[28.5350,77.3950],'107':[28.5400,77.3800],
+  '108':[28.5450,77.3850],'116':[28.5200,77.3700],'120':[28.5100,77.3600],
+};
+
+const SECTM={39:25,42:22,45:20,47:18,49:16,73:14,76:12,77:12,78:11,99:8,104:18,105:19,107:20,116:22};
+
+let driverData=null,transport=null,slots={};
+let map=null,driverMarker=null,routeLines=[];
+let watchId=null,isTracking=false,trackStart=null,alertCnt=0,locItv=null,currentPos=null;
+
+async function dbGet(p){try{const r=await fetch(`${DB}/${p}.json`);return r.ok?r.json():null;}catch(e){return null;}}
+async function dbSet(p,d){try{await fetch(`${DB}/${p}.json`,{method:'PUT',body:JSON.stringify(d),headers:{'Content-Type':'application/json'}});}catch(e){}}
+
+function getTrav(pickup,override){
+  if(override&&parseInt(override)>0)return parseInt(override);
+  if(!pickup)return 15;
+  const m=(pickup||'').toLowerCase().match(/sector[- ]*(\d+)/i);
+  if(m){const n=parseInt(m[1]);if(SECTM[n])return SECTM[n];}
+  return 15;
+}
+
+function getStopCoords(pickup){
+  if(!pickup)return null;
+  const m=(pickup||'').toLowerCase().match(/sector[- ]*(\d+)/i);
+  if(m&&SECTOR_COORDS[m[1]])return SECTOR_COORDS[m[1]];
+  return null;
+}
+
+function toMins(t){if(!t)return 0;const[h,m]=t.split(':').map(Number);return h*60+m;}
+function fmtTime(mins){
+  if(mins==null||isNaN(mins))return'---';
+  const h=Math.floor(mins/60)%24,m=mins%60,p=h>=12?'PM':'AM',hh=h%12||12;
+  return`${hh}:${String(m).padStart(2,'0')} ${p}`;
+}
+
+function getStudentSlots(stu,dayShort){
+  const all=slots[stu.batch+'||'+dayShort]||[];
+  const enr=Array.isArray(stu.subjects)?stu.subjects:(stu.subjects||'').split(',').map(s=>s.trim());
+  return all.filter(sl=>{
+    if(sl.isSpecial)return!!sl.includeTransport;
+    if(sl.isTest)return enr.includes('TEST');
+    if(!enr.length)return true;
+    if(enr.includes(sl.subj))return true;
+    if(sl.subj==='Physics / Chemistry'&&(enr.includes('Physics')||enr.includes('Chemistry')))return true;
+    return false;
+  }).sort((a,b)=>a.start.localeCompare(b.start));
+}
+
+function showToast(msg,dur=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ── COMPUTE TRIPS FOR A DAY ──
+// Returns array of trips: {type:'pickup'|'drop', departBASU, stops:[{stu,time,coords}]}
+function computeTrips(myStudents, dayShort){
+  // Collect each student's first class time and last class time
+  const stuData=myStudents.map(stu=>{
+    const daySlots=getStudentSlots(stu,dayShort);
+    if(!daySlots.length)return null;
+    const trav=getTrav(stu.pickup,stu.travelTime);
+    const firstSlot=daySlots[0];
+    const lastSlot=daySlots[daySlots.length-1];
+    const firstClassMins=toMins(firstSlot.start);
+    const lastClassMins=toMins(lastSlot.end);
+    // Pickup: student should be at BASU 5 mins before first class
+    // Driver arrives at student stop = firstClassMins - 5 - trav
+    const pickupStop=firstClassMins-5-trav;
+    // Drop: student leaves BASU = lastClassMins + 10, arrives home = lastClassMins+10+trav
+    const dropStop=lastClassMins+10+trav;
+    const departBASUForPickup=firstClassMins-5; // latest BASU depart for this student's pickup
+    const departBASUForDrop=lastClassMins+10;
+    return{stu,trav,pickupStop,dropStop,departBASUForPickup,departBASUForDrop,firstClassMins,lastClassMins,firstSlot,lastSlot};
+  }).filter(Boolean);
+
+  if(!stuData.length)return[];
+
+  // GROUP PICKUP TRIPS by first class time (within 15 min window = same trip)
+  const pickupGroups=[];
+  const sortedByClass=[...stuData].sort((a,b)=>a.firstClassMins-b.firstClassMins);
+  for(const sd of sortedByClass){
+    let added=false;
+    for(const grp of pickupGroups){
+      if(Math.abs(sd.firstClassMins-grp.classTime)<=15){
+        grp.students.push(sd);
+        added=true;break;
+      }
+    }
+    if(!added)pickupGroups.push({classTime:sd.firstClassMins,students:[sd]});
+  }
+
+  // GROUP DROP TRIPS by last class time (within 15 min window = same trip)
+  const dropGroups=[];
+  const sortedByLastClass=[...stuData].sort((a,b)=>a.lastClassMins-b.lastClassMins);
+  for(const sd of sortedByLastClass){
+    let added=false;
+    for(const grp of dropGroups){
+      if(Math.abs(sd.lastClassMins-grp.classTime)<=15){
+        grp.students.push(sd);
+        added=true;break;
+      }
+    }
+    if(!added)dropGroups.push({classTime:sd.lastClassMins,students:[sd]});
+  }
+
+  const trips=[];
+
+  // Build pickup trips
+  for(const grp of pickupGroups){
+    const stopsMap={};
+    for(const sd of grp.students){
+      const key=sd.pickupStop+'_'+sd.stu.pickup;
+      if(!stopsMap[key])stopsMap[key]={time:sd.pickupStop,place:sd.stu.pickup,students:[],coords:getStopCoords(sd.stu.pickup)};
+      stopsMap[key].students.push(sd.stu.name);
+    }
+    const stops=Object.values(stopsMap).sort((a,b)=>a.time-b.time);
+    // BASU departs early enough to reach first stop
+    const firstStopTime=stops[0].time;
+    const departBASU=firstStopTime-5; // 5 min buffer
+    const arrBASU=grp.classTime-5;
+    trips.push({type:'pickup',departBASU,arrBASU,classTime:grp.classTime,stops,stuCount:grp.students.length});
+  }
+
+  // Build drop trips
+  for(const grp of dropGroups){
+    const stopsMap={};
+    for(const sd of grp.students){
+      const key=sd.dropStop+'_'+sd.stu.pickup;
+      if(!stopsMap[key])stopsMap[key]={time:sd.dropStop,place:sd.stu.pickup,students:[],coords:getStopCoords(sd.stu.pickup)};
+      stopsMap[key].students.push(sd.stu.name);
+    }
+    const stops=Object.values(stopsMap).sort((a,b)=>a.time-b.time);
+    const departBASU=grp.classTime+10;
+    const lastDrop=stops[stops.length-1].time;
+    trips.push({type:'drop',departBASU,lastDrop,classTime:grp.classTime,stops,stuCount:grp.students.length});
+  }
+
+  // Sort all trips by depart time
+  trips.sort((a,b)=>a.departBASU-b.departBASU);
+  return trips;
+}
+
+// ── RENDER TRIPS ──
+function renderTrips(){
+  if(!transport||!transport.students)return;
+  const myStudents=transport.students.filter(s=>s.route===driverData.route);
+  const today=new Date().getDay();
+  const order=[...Array(7)].map((_,i)=>(today+i)%7);
+  let html='';
+  let todayTripCount=0;
+
+  for(const di of order){
+    const dayName=DAYS[di];
+    const dayShort=DAY_SHORT[dayName];
+    const isToday=di===today;
+    const trips=computeTrips(myStudents,dayShort);
+
+    if(isToday){
+      todayTripCount=trips.length;
+      document.getElementById('stTrips').textContent=trips.length;
+    }
+
+    if(!trips.length){
+      html+=`<div class="day-section">
+        <div class="day-hdr">
+          <div class="day-name">${DAYS_HI[di]} <span style="font-size:11px;color:var(--text2)">(${dayName})</span></div>
+          ${isToday?'<span class="today-pill">आज</span>':''}
+          <span class="day-meta">छुट्टी</span>
+        </div>
+      </div>`;
+      continue;
+    }
+
+    let tripsHtml='';
+    let tripNum=0;
+    for(const trip of trips){
+      tripNum++;
+      if(trip.type==='pickup'){
+        tripsHtml+=`<div class="trip-card">
+          <div class="trip-header pickup">
+            <span class="trip-icon">🏠→🏫</span>
+            <div style="flex:1">
+              <div class="trip-type-lbl p">पिकअप यात्रा #${tripNum} · ${trip.stuCount} छात्र</div>
+              <div style="font-size:11px;color:var(--text2)">Class time: ${fmtTime(trip.classTime)}</div>
+            </div>
+            <div class="trip-depart-time">${fmtTime(trip.departBASU)}</div>
+          </div>
+          <div class="trip-body">
+            <div class="trip-summary">
+              🏫 BASU से निकलें: <b>${fmtTime(trip.departBASU)}</b> → 
+              Stops: ${fmtTime(trips[0]?.stops[0]?.time||trip.departBASU+5)} → 
+              🏫 BASU वापसी: <b>${fmtTime(trip.arrBASU)}</b>
+            </div>
+            <div class="stop-list">
+              <div class="stop-row">
+                <div class="stop-circle basu"></div>
+                <div class="stop-info">
+                  <div class="stop-time-lbl">${fmtTime(trip.departBASU)}</div>
+                  <div class="stop-name-lbl" style="font-weight:700;color:var(--blue)">🏫 BASU Classes से निकलें</div>
+                </div>
+              </div>
+              ${trip.stops.map(stop=>`
+                <div class="stop-row">
+                  <div class="stop-circle pickup"></div>
+                  <div class="stop-info">
+                    <div class="stop-time-lbl">${fmtTime(stop.time)}</div>
+                    <div class="stop-name-lbl">📍 ${stop.place||'---'}</div>
+                    <div class="stop-students">👤 ${stop.students.join(', ')}</div>
+                  </div>
+                </div>
+              `).join('')}
+              <div class="stop-row">
+                <div class="stop-circle basu"></div>
+                <div class="stop-info">
+                  <div class="stop-time-lbl">${fmtTime(trip.arrBASU)}</div>
+                  <div class="stop-name-lbl" style="font-weight:700;color:var(--blue)">🏫 BASU Classes पहुंचें</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      } else {
+        tripsHtml+=`<div class="trip-card">
+          <div class="trip-header drop">
+            <span class="trip-icon">🏫→🏠</span>
+            <div style="flex:1">
+              <div class="trip-type-lbl d">ड्रॉप यात्रा #${tripNum} · ${trip.stuCount} छात्र</div>
+              <div style="font-size:11px;color:var(--text2)">Class ends: ${fmtTime(trip.classTime)}</div>
+            </div>
+            <div class="trip-depart-time">${fmtTime(trip.departBASU)}</div>
+          </div>
+          <div class="trip-body">
+            <div class="trip-summary">
+              🏫 BASU से निकलें: <b>${fmtTime(trip.departBASU)}</b> → 
+              आखिरी drop: <b>${fmtTime(trip.lastDrop)}</b>
+            </div>
+            <div class="stop-list">
+              <div class="stop-row">
+                <div class="stop-circle basu"></div>
+                <div class="stop-info">
+                  <div class="stop-time-lbl">${fmtTime(trip.departBASU)}</div>
+                  <div class="stop-name-lbl" style="font-weight:700;color:var(--blue)">🏫 BASU Classes से निकलें</div>
+                </div>
+              </div>
+              ${trip.stops.map(stop=>`
+                <div class="stop-row">
+                  <div class="stop-circle drop"></div>
+                  <div class="stop-info">
+                    <div class="stop-time-lbl">${fmtTime(stop.time)}</div>
+                    <div class="stop-name-lbl">📍 ${stop.place||'---'}</div>
+                    <div class="stop-students">👤 ${stop.students.join(', ')}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>`;
+      }
+    }
+
+    html+=`<div class="day-section">
+      <div class="day-hdr">
+        <div class="day-name">${DAYS_HI[di]} <span style="font-size:11px;color:var(--text2)">(${dayName})</span></div>
+        ${isToday?'<span class="today-pill">आज</span>':''}
+        <span class="day-meta">${trips.length} trips · ${myStudents.filter(s=>computeTrips([s],dayShort).length>0).length} छात्र</span>
+      </div>
+      ${tripsHtml}
+    </div>`;
+  }
+
+  document.getElementById('tripsContent').innerHTML=html||'<div class="empty">कोई schedule नहीं मिला</div>';
+}
+
+// ── RENDER STUDENTS ──
+function renderStudents(){
+  if(!transport||!transport.students)return;
+  const dayName=DAYS[new Date().getDay()];
+  const dayShort=DAY_SHORT[dayName];
+  const myStudents=transport.students.filter(s=>s.route===driverData.route);
+
+  document.getElementById('stuTitle').textContent=`आज के छात्र — ${driverData.route} (${myStudents.length})`;
+  document.getElementById('stTotal').textContent=myStudents.length;
+
+  if(!myStudents.length){
+    document.getElementById('stuList').innerHTML='<div class="empty">इस route पर कोई छात्र नहीं</div>';
+    return;
+  }
+
+  const stuWithTimes=myStudents.map(stu=>{
+    const daySlots=getStudentSlots(stu,dayShort);
+    if(!daySlots.length)return{...stu,pickupTime:null,dropTime:null,hasClass:false};
+    const trav=getTrav(stu.pickup,stu.travelTime);
+    const pickupTime=toMins(daySlots[0].start)-5-trav;
+    const dropTime=toMins(daySlots[daySlots.length-1].end)+10+trav;
+    return{...stu,pickupTime,dropTime,hasClass:true};
+  }).sort((a,b)=>(a.pickupTime||9999)-(b.pickupTime||9999));
+
+  const todayCnt=stuWithTimes.filter(s=>s.hasClass).length;
+  document.getElementById('stToday').textContent=todayCnt;
+
+  document.getElementById('stuList').innerHTML=stuWithTimes.map(stu=>`
+    <div class="stu-item">
+      <div class="stu-av">${(stu.name||'S')[0].toUpperCase()}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="stu-name">${stu.name||'---'}</div>
+        <div class="stu-sub">📍 ${stu.pickup||'---'}</div>
+        <div class="stu-sub">📚 ${stu.batch||'---'} | ⏱️ ${getTrav(stu.pickup,stu.travelTime)} min</div>
+      </div>
+      <div class="stu-times">
+        ${stu.hasClass
+          ?`<div class="stu-pt">🏠 ${fmtTime(stu.pickupTime)}</div><div class="stu-dt">🏡 ${fmtTime(stu.dropTime)}</div>`
+          :`<div class="stu-off">छुट्टी 🎉</div>`
+        }
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── MAP ──
+function initMap(){
+  if(map)return;
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([BASU_LAT,BASU_LNG],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+
+  // BASU marker
+  const basuIcon=L.divIcon({
+    html:`<div style="background:#1e40af;color:#fff;font-size:11px;font-weight:800;padding:4px 8px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)">🏫 BASU</div>`,
+    className:'',iconAnchor:[30,12]
+  });
+  L.marker([BASU_LAT,BASU_LNG],{icon:basuIcon}).addTo(map).bindPopup('BASU Classes, Sector 49 Noida');
+
+  // Driver marker
+  const driverIcon=L.divIcon({html:'<div style="font-size:26px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))">🚌</div>',iconSize:[32,32],iconAnchor:[16,16],className:''});
+  driverMarker=L.marker([BASU_LAT,BASU_LNG],{icon:driverIcon,zIndexOffset:1000}).addTo(map);
+
+  // Add today's stop markers
+  addTodayStopMarkers();
+}
+
+function addTodayStopMarkers(){
+  if(!transport||!transport.students||!map)return;
+  const myStudents=transport.students.filter(s=>s.route===driverData.route);
+  const dayShort=DAY_SHORT[DAYS[new Date().getDay()]];
+  const bounds=[[BASU_LAT,BASU_LNG]];
+
+  myStudents.forEach(stu=>{
+    const daySlots=getStudentSlots(stu,dayShort);
+    if(!daySlots.length)return;
+    const coords=getStopCoords(stu.pickup);
+    if(!coords)return;
+    bounds.push(coords);
+    const stopIcon=L.divIcon({
+      html:`<div style="background:#16a34a;color:#fff;font-size:9px;font-weight:800;padding:2px 5px;border-radius:5px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3);max-width:80px;overflow:hidden;text-overflow:ellipsis">${(stu.name||'').split(' ')[0]}</div>`,
+      className:'',iconAnchor:[20,8]
+    });
+    L.marker(coords,{icon:stopIcon}).addTo(map).bindPopup(`<b>${stu.name}</b><br>📍 ${stu.pickup}<br>📚 ${stu.batch}`);
+  });
+
+  if(bounds.length>1){
+    try{map.fitBounds(bounds,{padding:[30,30]});}catch(e){}
+  }
+}
+
+// ── GPS ──
+function startGPS(){
+  if(!navigator.geolocation){setGPS('err','GPS supported नहीं');return;}
+  watchId=navigator.geolocation.watchPosition(onLoc,onGPSErr,{enableHighAccuracy:true,timeout:15000,maximumAge:5000});
+}
+
+function onLoc(pos){
+  const{latitude:lat,longitude:lng,accuracy}=pos.coords;
+  currentPos={lat,lng,accuracy};
+  if(driverMarker)driverMarker.setLatLng([lat,lng]);
+  document.getElementById('coordsText').textContent=`${lat.toFixed(4)}, ${lng.toFixed(4)} | ±${Math.round(accuracy)}m`;
+  setGPS('ok',`GPS Active | ±${Math.round(accuracy)}m`);
+  document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString('hi-IN');
+  if(isTracking)saveLocation(lat,lng,accuracy);
+}
+
+function onGPSErr(e){
+  const msgs=['','GPS Allow करें → Settings','Location unavailable','GPS timeout'];
+  setGPS('err',msgs[e.code]||'GPS error');
+}
+
+function setGPS(type,msg){
+  document.getElementById('gpsBar').className=`gps-bar gps-${type}`;
+  document.getElementById('gpsText').textContent=msg;
+}
+
+async function saveLocation(lat,lng,accuracy){
+  await dbSet(`driverLoc/${driverData.route}`,{lat,lng,accuracy,ts:new Date().toISOString(),driver:driverData.name,route:driverData.route,isOnline:true});
+}
+
+// ── TRACKING ──
+function toggleTracking(on){
+  isTracking=on;
+  const badge=document.getElementById('onlineBadge');
+  const st=document.getElementById('trackStatusText');
+  if(on){
+    trackStart=Date.now();
+    badge.textContent='● Online';badge.classList.add('on');
+    st.textContent='✓ Students आपकी location देख सकते हैं';
+    showToast('🟢 Tracking शुरू हो गई');
+    if(currentPos)saveLocation(currentPos.lat,currentPos.lng,currentPos.accuracy);
+    locItv=setInterval(()=>{
+      if(currentPos)saveLocation(currentPos.lat,currentPos.lng,currentPos.accuracy);
+      if(trackStart){const mins=Math.round((Date.now()-trackStart)/60000);document.getElementById('trackTime').textContent=mins+' मिनट';}
+    },10000);
+  }else{
+    clearInterval(locItv);
+    badge.textContent='● Offline';badge.classList.remove('on');
+    st.textContent='Students को location नहीं दिख रही';
+    showToast('🔴 Tracking बंद हो गई');
+    fetch(`${DB}/driverLoc/${driverData.route}.json`,{method:'PATCH',body:JSON.stringify({isOnline:false,ts:new Date().toISOString()}),headers:{'Content-Type':'application/json'}}).catch(()=>{});
+  }
+}
+
+// ── ALERT ──
+async function sendAlert(title,body){
+  showToast('📤 Alert भेज रहा है...');
+  alertCnt++;document.getElementById('alertCount').textContent=alertCnt;
+  try{
+    const res=await fetch('https://api.onesignal.com/notifications',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Key ${OS_API_KEY}`},
+      body:JSON.stringify({app_id:OS_APP_ID,included_segments:['Total Subscriptions'],headings:{en:title},contents:{en:body+` | Route: ${driverData.route}`},url:'https://basu-nxt-air-schedule.web.app',priority:10})
+    });
+    showToast(res.ok?'✅ Alert भेज दिया!':'⚠️ Confirm नहीं हुआ');
+  }catch(e){showToast('❌ Error: '+e.message);}
+}
+
+// ── PAGE NAV ──
+function switchPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('nav-'+page).classList.add('active');
+  if(page==='tracking'&&map)setTimeout(()=>map.invalidateSize(),100);
+}
+
+// ── LOGOUT ──
+function doLogout(){
+  if(!confirm('Logout करना चाहते हैं?'))return;
+  if(isTracking){document.getElementById('trackToggle').checked=false;toggleTracking(false);}
+  if(watchId)navigator.geolocation.clearWatch(watchId);
+  localStorage.removeItem('basu_driver');
+  driverData=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('phoneInput').value='';
+  document.getElementById('loginBtn').disabled=false;
+  document.getElementById('loginBtn').textContent='Login करें';
+}
+
+// ── SHOW APP ──
+function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('splash').style.display='none';
+  document.getElementById('hName').textContent=driverData.name;
+  document.getElementById('hRoute').textContent=driverData.route+' | '+driverData.vehicle;
+  document.getElementById('pName').textContent=driverData.name;
+  document.getElementById('pRoute').textContent='🚌 '+driverData.route;
+  document.getElementById('pVehicle').textContent='🚐 '+driverData.vehicle+' | 📞 +91'+driverData.phone;
+  document.getElementById('stTotal').textContent=(transport.students||[]).filter(s=>s.route===driverData.route).length;
+  initMap();
+  startGPS();
+  renderStudents();
+  renderTrips();
+}
+
+// ── INIT ──
+document.getElementById('phoneInput').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,10);});
+
+async function doLogin(){
+  const ph=document.getElementById('phoneInput').value.trim();
+  const err=document.getElementById('loginErr');
+  const btn=document.getElementById('loginBtn');
+  if(ph.length!==10){err.textContent='10 अंकों का नंबर डालें';return;}
+  err.textContent='';btn.disabled=true;btn.textContent='Check हो रहा है...';
+  try{
+    document.getElementById('splashSub').textContent='Data load हो रहा है...';
+    document.getElementById('splash').style.display='flex';
+    document.getElementById('loginScreen').style.display='none';
+    transport=await dbGet('transport');
+    if(!transport||!transport.routes)throw new Error('Data नहीं मिला');
+    const route=transport.routes.find(r=>{
+      const rph=(r.phone||'').replace(/\D/g,'');
+      return rph===ph||rph.endsWith(ph)||rph==='91'+ph;
+    });
+    if(!route)throw new Error('यह नंबर किसी route पर register नहीं है');
+    driverData={name:route.driver,route:route.route,phone:ph,vehicle:route.vehicle||'---'};
+    slots=(await dbGet('schedule/slots'))||{};
+    localStorage.setItem('basu_driver',JSON.stringify(driverData));
+    showApp();
+  }catch(e){
+    err.textContent=e.message;btn.disabled=false;btn.textContent='Login करें';
+    document.getElementById('splash').style.display='none';
+    document.getElementById('loginScreen').style.display='flex';
+  }
+}
+
+window.addEventListener('load',async()=>{
+  const saved=localStorage.getItem('basu_driver');
+  if(saved){
+    try{
+      driverData=JSON.parse(saved);
+      document.getElementById('splashSub').textContent='Data load हो रहा है...';
+      transport=await dbGet('transport');
+      slots=(await dbGet('schedule/slots'))||{};
+      showApp();return;
+    }catch(e){localStorage.removeItem('basu_driver');}
+  }
+  document.getElementById('splash').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+});
+
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&map)setTimeout(()=>map.invalidateSize(),200);
+});
+</script>
+</body>
+</html>

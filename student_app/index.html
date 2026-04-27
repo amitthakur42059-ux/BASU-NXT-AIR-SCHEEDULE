@@ -6,21 +6,36 @@
 <meta name="theme-color" content="#f97316">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BASU Bus">
-<title>BASU Classes – Bus Tracker</title>
+<title>BASU Cabs – Bus Tracker</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: '228f183d-3c5e-41bd-aade-8f62c7db7c96',
+      serviceWorkerParam: { scope: '/' },
+      serviceWorkerPath: 'OneSignalSDKWorker.js',
       notifyButton: { enable: false },
       allowLocalhostAsSecureOrigin: true,
+      promptOptions: {
+        slidedown: {
+          prompts: [{
+            type: 'push',
+            autoPrompt: true,
+            text: {
+              actionMessage: 'BASU CABS से bus notifications पाएं!',
+              acceptButton: 'Allow',
+              cancelButton: 'Later'
+            },
+            delay: { pageViews: 1, timeDelay: 3 }
+          }]
+        }
+      }
     });
   });
 </script>
@@ -189,15 +204,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);position:fix
 
 <div id="splash">
   <div class="sbus">🚌</div>
-  <div class="stitle">BASU Classes</div>
-  <div class="ssub" id="splashSub">बस ट्रैकर लोड हो रहा है...</div>
+  <div class="stitle">BASU Cabs</div>
+  <div class="ssub" id="splashSub">Loading BASU Cabs...</div>
   <div class="sdots"><span class="sdot"></span><span class="sdot"></span><span class="sdot"></span></div>
 </div>
 
 <div id="loginScreen">
   <div class="ltop">
     <div class="llogo">🚌</div>
-    <div class="lbrand">BASU Classes</div>
+    <div class="lbrand">BASU Cabs</div>
     <div class="ltag" id="loginTag">बस ट्रैकर – छात्र पोर्टल</div>
   </div>
   <div class="lbody">
@@ -235,7 +250,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);position:fix
   <div class="topbar">
     <div class="ticon">🚌</div>
     <div class="tinfo">
-      <div class="ttitle">BASU Classes</div>
+      <div class="ttitle">BASU Cabs</div>
       <div class="tsub" id="topName">—</div>
     </div>
     <button class="langbtn" id="langBtn" onclick="toggleLang()">EN</button>
@@ -587,8 +602,7 @@ async function initApp(user){
   loadAtt();
   if(locItv)clearInterval(locItv);
   locItv=setInterval(loadDrvLoc,12000);
-  setTimeout(()=>setupFCM(S.id),2000);
-  startScheduleListener();
+  setTimeout(()=>setupFCM(S.id),2000);startScheduleListener();
 }
 
 // ─── REAL-TIME SCHEDULE LISTENER ───
@@ -786,35 +800,32 @@ function doInstall(){
   inst.classList.toggle('show');
 }
 
-// ─── FCM NOTIFICATIONS ───
-const VAPID='BOPhyTCkHpbYQlZefoyASh7sTMLnTZnBUekCeWWDSg2nOc-UChtD7CCgSj5aoo3xFq8OwaWJmPhKaDO9EL2uX_Q';
-
+// ─── ONESIGNAL NOTIFICATIONS ───
 async function setupFCM(studentId){
-  if(!('Notification' in window)||!firebase.messaging)return;
+  if(!window.OneSignal)return;
   try{
-    let swReg=await navigator.serviceWorker.register('firebase-messaging-sw.js');
-    const perm=await Notification.requestPermission();
-    if(perm!=='granted'){console.log('Notif denied');updateNotifBtn(false);return;}
-    const msg=firebase.messaging();
-    const token=await msg.getToken({vapidKey:VAPID,serviceWorkerRegistration:swReg});
-    if(token){
-      await fetch(`${DB}/fcmTokens/${studentId}.json`,{method:'PUT',body:JSON.stringify(token),headers:{'Content-Type':'application/json'}});
-      console.log('FCM token saved');
-      updateNotifBtn(true);
-    }
-    // Foreground message handler
-    msg.onMessage(payload=>{
-      const{title,body}=payload.notification||{};
-      const data=payload.data||{};
-      showFgNotif(title,body,data.type);
+    await OneSignal.Notifications.requestPermission();
+    if(studentId)await OneSignal.login(studentId);
+    await OneSignal.User.addTags({
+      studentId:studentId||'',
+      route:S?.route||'',
+      batch:S?.batch||'',
+      name:S?.name||''
     });
-  }catch(e){console.warn('FCM error:',e);}
+    // Save OneSignal player ID to Firebase
+    const playerId=await OneSignal.User.PushSubscription.id;
+    if(playerId&&studentId){
+      await fetch(`${DB}/osTokens/${studentId}.json`,{method:'PUT',body:JSON.stringify(playerId),headers:{'Content-Type':'application/json'}});
+    }
+    console.log('OneSignal setup done');
+    updateNotifBtn(true);
+  }catch(e){console.warn('OneSignal error:',e);}
 }
 
 function showFgNotif(title,body,type){
   const el=document.getElementById('toast');
   if(!el)return;
-  el.innerHTML=`<div style="max-width:280px"><div style="font-size:12px;font-weight:800;margin-bottom:2px">${title||'BASU Classes'}</div><div style="font-size:11px;opacity:.85">${body||''}</div></div>`;
+  el.innerHTML=`<div style="max-width:280px"><div style="font-size:12px;font-weight:800;margin-bottom:2px">${title||'BASU Cabs'}</div><div style="font-size:11px;opacity:.85">${body||''}</div></div>`;
   el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'),5000);
   if(type==='pickup_alert'||type==='drop_alert')setTimeout(()=>goTab('bus'),600);

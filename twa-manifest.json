@@ -1,0 +1,54 @@
+{
+  "packageId": "io.github.amitthakur42059_ux.twa",
+  "host": "basu-nxt-air-schedule.web.app",
+  "name": "BASU Cabs",
+  "launcherName": "BASU Cabs",
+  "display": "standalone",
+  "themeColor": "#F97316",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#F97316",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://basu-nxt-air-schedule.web.app/icon-512.png",
+  "maskableIconUrl": "https://basu-nxt-air-schedule.web.app/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "C:\\Users\\91758\\BASU-NXT-AIR-SCHEEDULE\\android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "3",
+  "appVersionCode": 3,
+  "shortcuts": [
+    {
+      "name": "Track Cab",
+      "shortName": "Track Cab",
+      "url": "https://basu-nxt-air-schedule.web.app/",
+      "chosenIconUrl": "https://basu-nxt-air-schedule.web.app/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://basu-nxt-air-schedule.web.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://basu-nxt-air-schedule.web.app/",
+  "minSdkVersion": 21,
+  "orientation": "portrait-primary",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "3"
+}

@@ -96,7 +96,7 @@ exports.pickupAlert = functions.pubsub
     const [transSnap, slotsSnap, tokensSnap] = await Promise.all([
       db.ref("transport").once("value"),
       db.ref("schedule/slots").once("value"),
-      db.ref("osTokens").once("value"),
+      db.ref("fcmTokens").once("value"),
     ]);
 
     const transport = transSnap.val();
@@ -153,7 +153,7 @@ exports.dropAlert = functions.pubsub
     const [transSnap, slotsSnap, tokensSnap] = await Promise.all([
       db.ref("transport").once("value"),
       db.ref("schedule/slots").once("value"),
-      db.ref("osTokens").once("value"),
+      db.ref("fcmTokens").once("value"),
     ]);
 
     const transport = transSnap.val();
@@ -195,17 +195,31 @@ exports.dropAlert = functions.pubsub
 exports.scheduleUpdateAlert = functions.database
   .ref("/schedule/slots")
   .onWrite(async () => {
-    const tokensSnap = await db.ref("osTokens").once("value");
+    const tokensSnap = await db.ref("fcmTokens").once("value");
     const tokens = tokensSnap.val() || {};
     const studentIds = Object.keys(tokens);
     if (!studentIds.length) return null;
 
+    const tokenList = Object.values(tokens).filter(Boolean);
+    if(tokenList.length){
+      await admin.messaging().sendEachForMulticast({
+        tokens: tokenList,
+        notification:{
+          title:"BASU CABS — Schedule Update 📅",
+          body:"Timetable has been updated! Open app to see new schedule."
+        },
+        webpush:{
+          fcmOptions:{ link:"https://basu-nxt-air-schedule.web.app" },
+          notification:{ icon:"/icon-192.png" }
+        }
+      });
+    }
     await sendOSNotification({
       app_id: OS_APP_ID,
-      include_aliases: { external_id: studentIds },
+      included_segments: ["Total Subscriptions"],
       target_channel: "push",
       headings: { en: "BASU CABS — Schedule Update 📅" },
-      contents: { en: "टाइमटेबल अपडेट हुआ है! नया शेड्यूल देखने के लिए ऐप खोलें।" },
+      contents: { en: "Timetable has been updated! Open app to see new schedule." },
       url: "https://basu-nxt-air-schedule.web.app",
       priority: 5,
     });
@@ -225,7 +239,7 @@ exports.driverOfflineCheck = functions.pubsub
     const [transSnap, locSnap, tokensSnap] = await Promise.all([
       db.ref("transport").once("value"),
       db.ref("driverLoc").once("value"),
-      db.ref("osTokens").once("value"),
+      db.ref("fcmTokens").once("value"),
     ]);
 
     const transport = transSnap.val();
@@ -254,7 +268,7 @@ exports.driverOfflineCheck = functions.pubsub
       include_aliases: { external_id: affectedIds },
       target_channel: "push",
       headings: { en: "BASU CABS ⚠️" },
-      contents: { en: "बस की live location अभी available नहीं है। Driver से संपर्क करें।" },
+      contents: { en: "Bus live location is not available. Please contact the driver." },
       priority: 5,
     });
     return null;
