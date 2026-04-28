@@ -797,6 +797,11 @@ input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
           <div id="route-list"></div>
         </div>
         <div>
+          <div style="margin-bottom:8px">
+            <button onclick="fixAllStudents()" style="width:100%;padding:11px;background:#f59e0b;color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;font-size:.84rem">
+              🔧 Fix All Students (1-39 ka data fix karo)
+            </button>
+          </div>
           <div class="sec-lbl">Student → Route Assignment</div>
           <div class="fg">
             <div><label class="lbl">Student Name</label><input id="tr-student" placeholder="Student name"/></div>
@@ -3921,24 +3926,39 @@ function autoLoad(){ return false; }
 let _autoSaveTimer = null;
 
 function fixAllStudents(){
-  if(!confirm('Yeh saare '+transport.students.length+' students ko Firebase mein dobara save karega. Continue?')) return;
+  if(!confirm('Yeh saare '+transport.students.length+' students ko Firebase mein dobara save karega.\nYeh 1-39 wale students ka data bhi fix karega.\nContinue?')) return;
   
-  // Convert ALL students to object format
+  // Ensure ALL students have proper string IDs (not numeric)
+  var fixed = 0;
+  transport.students = transport.students.map(function(s, idx){
+    if(!s) return null;
+    // If id is numeric or missing, generate new proper id
+    var id = s.id ? String(s.id) : null;
+    if(!id || /^\d+$/.test(id)) {
+      // Numeric id - give proper string id
+      id = 'sfixed_' + Date.now() + '_' + idx;
+      fixed++;
+    }
+    return Object.assign({}, s, {id: id});
+  }).filter(Boolean);
+  
   var stusObj = {};
   transport.students.forEach(function(s){
-    if(s && s.id) stusObj[s.id] = s;
+    stusObj[s.id] = s;
   });
   
   loadFirebaseSDK().then(function(){
     if(!db) return;
-    showSyncStatus('⏳ Fixing all students...','#1e40af');
-    db.ref('transport/students').set(stusObj)
-      .then(function(){
-        showSyncStatus('✅ All '+transport.students.length+' students fixed!','#166534');
-      })
-      .catch(function(e){
+    showSyncStatus('⏳ Saving '+transport.students.length+' students...','#1e40af');
+    // Delete old array data first, then set new object
+    db.ref('transport/students').remove().then(function(){
+      return db.ref('transport/students').set(stusObj);
+    }).then(function(){
+        showSyncStatus('✅ '+transport.students.length+' students fixed! ('+fixed+' IDs updated)','#166534');
+        renderRoutes();
+    }).catch(function(e){
         showSyncStatus('❌ Fix failed: '+e.message,'#dc2626');
-      });
+    });
   });
 }
 
