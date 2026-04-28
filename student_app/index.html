@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f97316">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BASU Bus">
-<title>BASU Cabs – Bus Tracker</title>
+<title>BASU Classes – Bus Tracker</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
@@ -204,15 +204,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);position:fix
 
 <div id="splash">
   <div class="sbus">🚌</div>
-  <div class="stitle">BASU Cabs</div>
-  <div class="ssub" id="splashSub">Loading BASU Cabs...</div>
+  <div class="stitle">BASU Classes</div>
+  <div class="ssub" id="splashSub">बस ट्रैकर लोड हो रहा है...</div>
   <div class="sdots"><span class="sdot"></span><span class="sdot"></span><span class="sdot"></span></div>
 </div>
 
 <div id="loginScreen">
   <div class="ltop">
     <div class="llogo">🚌</div>
-    <div class="lbrand">BASU Cabs</div>
+    <div class="lbrand">BASU Classes</div>
     <div class="ltag" id="loginTag">बस ट्रैकर – छात्र पोर्टल</div>
   </div>
   <div class="lbody">
@@ -250,7 +250,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);position:fix
   <div class="topbar">
     <div class="ticon">🚌</div>
     <div class="tinfo">
-      <div class="ttitle">BASU Cabs</div>
+      <div class="ttitle">BASU Classes</div>
       <div class="tsub" id="topName">—</div>
     </div>
     <button class="langbtn" id="langBtn" onclick="toggleLang()">EN</button>
@@ -367,6 +367,7 @@ firebase.initializeApp({
   appId:"1:994754056347:web:ff9d70a91cdb6a4466f63e"
 });
 const DB="https://basu-nxt-air-schedule-default-rtdb.firebaseio.com";
+function toArr(v){return Array.isArray(v)?v:(v&&typeof v==="object"?Object.values(v):[])}
 
 let lang=localStorage.getItem('bl')||'hi';
 let S=null,transport=null,slots={},drvAtt=null;
@@ -529,8 +530,10 @@ document.getElementById('sendOtpBtn').addEventListener('click',async()=>{
   btn.disabled=true;btn.textContent=t('sending');
   const tr=await dbGet('transport');
   if(!tr||!tr.students){document.getElementById('phoneErr').textContent=t('noData');btn.disabled=false;btn.textContent=t('sendOtp');return;}
+  const stuArr=toArr(tr.students);
+  tr.students=stuArr;
   transport=tr;
-  const found=tr.students.find(s=>s.phone===ph||s.phone1===ph||s.phone2===ph);
+  const found=stuArr.find(s=>s.phone===ph||s.phone1===ph||s.phone2===ph);
   if(!found){document.getElementById('phoneErr').textContent=t('notReg');btn.disabled=false;btn.textContent=t('sendOtp');return;}
   try{
     if(!recapV)setupRecap();
@@ -590,7 +593,9 @@ async function initApp(user){
   if(!transport)transport=await dbGet('transport');
   if(!transport||!transport.students){hideSplash();showLogin();return;}
   const ph=user.phoneNumber?user.phoneNumber.replace('+91',''):'';
-  S=transport.students.find(s=>s.phone===ph||s.phone1===ph||s.phone2===ph);
+  const _arr=toArr(transport.students);
+  transport.students=_arr;
+  S=_arr.find(s=>s.phone===ph||s.phone1===ph||s.phone2===ph);
   if(!S){hideSplash();showLogin();firebase.auth().signOut();return;}
   const sdata=await dbGet('schedule/slots');
   slots=sdata||{};
@@ -695,8 +700,8 @@ function updBusMarker(loc){
   const ts=loc.ts?new Date(loc.ts):new Date();
   document.getElementById('lastRef').textContent=ts.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   if(rLine)leafMap.removeLayer(rLine);
-  rLine=L.polyline([[loc.lat,loc.lng],[28.6139,77.209]],{color:'#f97316',weight:3,dashArray:'8,6',opacity:.7}).addTo(leafMap);
-  leafMap.fitBounds([[loc.lat,loc.lng],[28.6139,77.209]],{padding:[40,40]});
+  rLine=L.polyline([[loc.lat,loc.lng],[(S&&S.lat?S.lat:28.6139),(S&&S.lng?S.lng:77.209)]],{color:'#f97316',weight:3,dashArray:'8,6',opacity:.7}).addTo(leafMap);
+  leafMap.fitBounds([[loc.lat,loc.lng],[(S&&S.lat?S.lat:28.6139),(S&&S.lng?S.lng:77.209)]],{padding:[40,40]});
 }
 
 function dist(la1,ln1,la2,ln2){const R=6371,dl=(la2-la1)*Math.PI/180,dn=(ln2-ln1)*Math.PI/180;const a=Math.sin(dl/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dn/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
@@ -778,7 +783,7 @@ function renderProfile(){
     ['📍',t('stopL'),S.pickup||'—'],
     ['⏱️',t('trav'),getTrav(S)+' '+t('min')],
   ].map(([ic,lb,vl])=>`<div class="irow"><div class="ilbl">${ic} ${lb}</div><div class="ival">${vl}</div></div>`).join('');
-  const fellows=(transport.students||[]).filter(st=>st.route===S.route&&st.id!==S.id);
+  const fellows=toArr(transport.students).filter(st=>st.route===S.route&&st.id!==S.id);
   document.getElementById('fellowList').innerHTML=fellows.length?fellows.map(f=>`<div class="fellowitem"><div class="fellowav">${(f.name||'?').charAt(0)}</div><div><div class="fellowname">${f.name}</div><div class="fellowstop">${f.pickup||'—'}</div></div></div>`).join(''):`<div style="font-size:13px;color:var(--text3);padding:8px 0">${t('noFellow')}</div>`;
   const route=(transport.routes||[]).find(r=>r.route===S.route);
   document.getElementById('drvProfile').innerHTML=route?[
@@ -825,7 +830,7 @@ async function setupFCM(studentId){
 function showFgNotif(title,body,type){
   const el=document.getElementById('toast');
   if(!el)return;
-  el.innerHTML=`<div style="max-width:280px"><div style="font-size:12px;font-weight:800;margin-bottom:2px">${title||'BASU Cabs'}</div><div style="font-size:11px;opacity:.85">${body||''}</div></div>`;
+  el.innerHTML=`<div style="max-width:280px"><div style="font-size:12px;font-weight:800;margin-bottom:2px">${title||'BASU Classes'}</div><div style="font-size:11px;opacity:.85">${body||''}</div></div>`;
   el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'),5000);
   if(type==='pickup_alert'||type==='drop_alert')setTimeout(()=>goTab('bus'),600);
