@@ -1514,8 +1514,15 @@ function getAllBatches(){
 // Ensures student subjects are ALWAYS correct based on batch
 function sanitizeStudentId(id, idx){
   if(!id && id !== 0) return 'stu_' + idx + '_' + Math.random().toString(36).slice(2,8);
-  var s = String(id).replace(/[.#$\[\]/]/g,'_');
-  if(/^\d/.test(s)) s = 'stu_' + s;
+  // Replace each invalid char one by one
+  var s = String(id);
+  s = s.split('.').join('_');
+  s = s.split('#').join('_');
+  s = s.split('$').join('_');
+  s = s.split('[').join('_');
+  s = s.split(']').join('_');
+  s = s.split('/').join('_');
+  if(s.charAt(0) >= '0' && s.charAt(0) <= '9') s = 'stu_' + s;
   return s;
 }
 
@@ -4025,9 +4032,11 @@ function saveTransportNow(){
   // Immediately save transport to its own Firebase node
   loadFirebaseSDK().then(()=>{
     if(!db) return;
-    db.ref('transport').set(JSON.parse(JSON.stringify(transport)))
+    var _cs={};
+    transport.students.forEach(function(s,i){if(!s)return;var sid=sanitizeStudentId(s.id,i);_cs[sid]=Object.assign({},s,{id:sid});});
+    db.ref('transport').set(JSON.parse(JSON.stringify({routes:transport.routes,students:_cs})))
       .then(()=>showSyncStatus('✅ Transport saved!','#166534'))
-      .catch(e=>showSyncStatus('❌ Transport save failed','#dc2626'));
+      .catch(e=>showSyncStatus('❌ Transport save failed: '+e.message,'#dc2626'));
   }).catch(()=>{});
 }
 
@@ -7138,4 +7147,3 @@ function chApplyRange(){
 </div><!-- end .main -->
 </body>
 </html>
-            
