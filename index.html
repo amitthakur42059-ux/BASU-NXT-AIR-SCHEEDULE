@@ -784,6 +784,7 @@ input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
         <input id="tr-search" placeholder="🔍 Search student..." oninput="renderRoutes()"
           style="width:190px;padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.78rem"/>
         <button class="btn btn-ok btn-sm" onclick="document.getElementById('csv-upload').click()">📥 Bulk CSV</button>
+        <button class="btn btn-warn btn-sm" onclick="fixAllStudents()" title="Fix Firebase array issue for all students">🔧 Fix All Students</button>
         <input type="file" id="csv-upload" accept=".csv,.tsv,.txt" style="display:none" onchange="bulkUploadStudents(event)"/>
         <button class="btn btn-ghost btn-sm" onclick="downloadCSVTemplate()">📄 Template</button>
         <button class="btn btn-pri btn-sm" onclick="openDriverForm(-1)">+ Route</button>
@@ -1313,11 +1314,13 @@ function saveToFirebase(){
         currentPhase:   window._currentPhase||'',
       }
     }));
-    // Save transport separately to avoid overwrite conflicts
-    // Heal subjects before saving - ensures Firebase always has correct data
-    const healedForSave = {...transport, students: healStudentSubjects(transport.students)};
+    // Save transport separately - students as OBJECT (not array) to avoid Firebase 40-limit
+    const healedStus = healStudentSubjects(transport.students);
+    const stusAsObj = {};
+    healedStus.forEach(function(s){ if(s&&s.id) stusAsObj[s.id]=s; });
     const cleanTransport = JSON.parse(JSON.stringify({
-      ...healedForSave,
+      routes: transport.routes,
+      students: stusAsObj,
       _version: Date.now()
     }));
     db.ref('schedule').set(cleanData)
@@ -3916,6 +3919,28 @@ function autoLoad(){ return false; }
 
 // Auto-save to Firebase after every change (2 second debounce)
 let _autoSaveTimer = null;
+
+function fixAllStudents(){
+  if(!confirm('Yeh saare '+transport.students.length+' students ko Firebase mein dobara save karega. Continue?')) return;
+  
+  // Convert ALL students to object format
+  var stusObj = {};
+  transport.students.forEach(function(s){
+    if(s && s.id) stusObj[s.id] = s;
+  });
+  
+  loadFirebaseSDK().then(function(){
+    if(!db) return;
+    showSyncStatus('⏳ Fixing all students...','#1e40af');
+    db.ref('transport/students').set(stusObj)
+      .then(function(){
+        showSyncStatus('✅ All '+transport.students.length+' students fixed!','#166534');
+      })
+      .catch(function(e){
+        showSyncStatus('❌ Fix failed: '+e.message,'#dc2626');
+      });
+  });
+}
 
 function saveTransportNow(){
   // Immediately save transport to its own Firebase node
