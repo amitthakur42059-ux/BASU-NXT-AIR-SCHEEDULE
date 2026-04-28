@@ -1393,16 +1393,30 @@ function loadFromFirebase(){
             if(m) return {...s,batch:m};
             return s;
           }
-          if(tData&&tData.students&&tData.students.length){
-            transport={
-              routes: tData.routes||[],
-              students: healStudentSubjects(normalizeStudents(tData.students).map(fixBatch))
-            };
-          } else if(data.transport&&data.transport.students&&data.transport.students.length){
-            transport={
-              routes: data.transport.routes||[],
-              students: healStudentSubjects(normalizeStudents(data.transport.students).map(fixBatch))
-            };
+          if(tData&&tData.students){
+            const stuArray=Array.isArray(tData.students)?tData.students:Object.values(tData.students);
+            if(stuArray.length){
+              transport={
+                routes: tData.routes||[],
+                students: healStudentSubjects(normalizeStudents(stuArray).map(fixBatch))
+              };
+            } else if(data.transport&&data.transport.students){
+              const fallback=Array.isArray(data.transport.students)?data.transport.students:Object.values(data.transport.students);
+              if(fallback.length){
+                transport={
+                  routes: data.transport.routes||[],
+                  students: healStudentSubjects(normalizeStudents(fallback).map(fixBatch))
+                };
+              }
+            }
+          } else if(data.transport&&data.transport.students){
+            const fallback=Array.isArray(data.transport.students)?data.transport.students:Object.values(data.transport.students);
+            if(fallback.length){
+              transport={
+                routes: data.transport.routes||[],
+                students: healStudentSubjects(normalizeStudents(fallback).map(fixBatch))
+              };
+            }
           }
           renderAll();
         }).catch(()=>{
@@ -3179,7 +3193,9 @@ function updateStudent(){
   if(!name||!batch||!route){alert('Fill name, batch and route');return;}
   const subjects=[...document.querySelectorAll('.tr-subj-cb:checked')].map(cb=>cb.value);
   const ctr=document.getElementById('tr-centre')?document.getElementById('tr-centre').value:transport.students[idx].centre||'cbse';
-  transport.students[idx]={...transport.students[idx],name,batch,route,pickup,subjects,centre:ctr};
+  const phone1=document.getElementById('tr-phone1')?document.getElementById('tr-phone1').value.trim():transport.students[idx].phone1||'';
+  const phone2=document.getElementById('tr-phone2')?document.getElementById('tr-phone2').value.trim():transport.students[idx].phone2||'';
+  transport.students[idx]={...transport.students[idx],name,batch,route,pickup,subjects,centre:ctr,phone1,phone2};
   // Reset form
   editStudentIdx=-1;
   document.getElementById('tr-student').value='';
@@ -4099,10 +4115,13 @@ function initFromFirebase(){
       }
 
       // Apply transport data - Firebase always wins
-      if(tData && tData.students && tData.students.length){
+      const _stuRaw = tData && tData.students
+        ? (Array.isArray(tData.students) ? tData.students : Object.values(tData.students))
+        : [];
+      if(tData && _stuRaw.length){
         // Auto-heal corrupted subjects: if student has fewer subjects than batch expects,
         // restore from BATCHES array (source of truth for subject list)
-        const healedStudents = tData.students.map(s => {
+        const healedStudents = _stuRaw.map(s => {
           const batchInfo = BATCHES.find(b => b.name === s.batch);
           if (!batchInfo) return s;
           const expected = batchInfo.subjects;
