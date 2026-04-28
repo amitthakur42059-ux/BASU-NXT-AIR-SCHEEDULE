@@ -1324,8 +1324,7 @@ function saveToFirebase(){
     const stusAsObj = {};
     healedStus.forEach(function(s,idx){
       if(!s) return;
-      var safeId = s.id ? String(s.id).replace(/[.#$\[\]/]/g,'_') : 'stu_'+idx;
-      if(/^\d+$/.test(safeId)) safeId = 'stu_'+safeId;
+      var safeId = sanitizeStudentId(s.id, idx);
       stusAsObj[safeId] = Object.assign({},s,{id:safeId});
     });
     const cleanTransport = JSON.parse(JSON.stringify({
@@ -1510,10 +1509,22 @@ function getAllBatches(){
 // ═══ GOD-LEVEL SUBJECT HEALER ═══
 // Called every time transport data comes from Firebase
 // Ensures student subjects are ALWAYS correct based on batch
+function sanitizeStudentId(id, idx){
+  if(!id && id !== 0) return 'stu_' + idx + '_' + Math.random().toString(36).slice(2,8);
+  var s = String(id).replace(/[.#$\[\]/]/g,'_');
+  if(/^\d/.test(s)) s = 'stu_' + s;
+  return s;
+}
+
 function normalizeStudents(raw){
   if(!raw) return [];
-  if(Array.isArray(raw)) return raw.filter(Boolean);
-  return Object.values(raw).filter(Boolean);
+  var arr = Array.isArray(raw) ? raw.filter(Boolean) : Object.values(raw).filter(Boolean);
+  // Sanitize ALL IDs on load
+  return arr.map(function(s, idx){
+    if(!s) return null;
+    var cleanId = sanitizeStudentId(s.id, idx);
+    return Object.assign({}, s, {id: cleanId});
+  }).filter(Boolean);
 }
 
 function healStudentSubjects(students) {
