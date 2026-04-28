@@ -798,8 +798,11 @@ input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
         </div>
         <div>
           <div style="margin-bottom:8px">
+            <button onclick="nuclearFixTransport()" style="width:100%;padding:11px;background:#dc2626;color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;font-size:.84rem;margin-bottom:6px">
+              🔥 Fix & Save Transport (Firebase Error Fix)
+            </button>
             <button onclick="fixAllStudents()" style="width:100%;padding:11px;background:#f59e0b;color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;font-size:.84rem">
-              🔧 Fix All Students (1-39 ka data fix karo)
+              🔧 Fix All Students IDs
             </button>
           </div>
           <div class="sec-lbl">Student → Route Assignment</div>
@@ -3940,6 +3943,42 @@ function autoLoad(){ return false; }
 
 // Auto-save to Firebase after every change (2 second debounce)
 let _autoSaveTimer = null;
+
+function nuclearFixTransport(){
+  // Delete ALL transport data first, then re-save clean
+  if(!confirm('Yeh Firebase se transport data DELETE karega aur clean data save karega.\nSure?')) return;
+  
+  showSyncStatus('⏳ Cleaning transport...','#1e40af');
+  
+  // Step 1: Delete transport via REST
+  fetch('https://basu-nxt-air-schedule-default-rtdb.firebaseio.com/transport.json', 
+    {method:'DELETE'})
+  .then(function(){
+    // Step 2: Build clean students object
+    var stusObj = {};
+    transport.students.forEach(function(s, idx){
+      if(!s) return;
+      var cleanId = sanitizeStudentId(s.id, idx);
+      stusObj[cleanId] = Object.assign({}, s, {id: cleanId});
+    });
+    
+    // Step 3: Save clean data via REST
+    var cleanData = {
+      routes: transport.routes,
+      students: stusObj
+    };
+    return fetch('https://basu-nxt-air-schedule-default-rtdb.firebaseio.com/transport.json',
+      {method:'PUT', body: JSON.stringify(cleanData), 
+       headers:{'Content-Type':'application/json'}});
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(){
+    showSyncStatus('✅ Transport fixed! ' + transport.students.length + ' students saved','#166534');
+  })
+  .catch(function(e){
+    showSyncStatus('❌ Error: '+e.message,'#dc2626');
+  });
+}
 
 function fixAllStudents(){
   if(!confirm('Yeh saare '+transport.students.length+' students ko Firebase mein dobara save karega.\nYeh 1-39 wale students ka data bhi fix karega.\nContinue?')) return;
