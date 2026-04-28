@@ -3910,10 +3910,16 @@ function bulkUploadStudents(e){
           return;
         }
 
-        transport.students.push({name,batch,route,centre,pickup,phone1,phone2,subjects,id:'s'+Date.now()+Math.random()});
+        transport.students.push({name,batch,route,centre,pickup,phone1,phone2,subjects,id:'s'+Date.now()+'_'+Math.floor(Math.random()*1000000)});
         added++;
       });
 
+      // Sanitize ALL student IDs after import (fix any bad IDs from old data)
+      transport.students = transport.students.map(function(s, idx){
+        if(!s) return null;
+        var cleanId = sanitizeStudentId(s.id, idx);
+        return Object.assign({}, s, {id: cleanId});
+      }).filter(Boolean);
       // Heal all subjects after import
       transport.students = healStudentSubjects(transport.students);
       let msg = `✅ Imported ${added} students!`;
