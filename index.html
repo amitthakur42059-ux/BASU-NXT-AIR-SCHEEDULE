@@ -1322,7 +1322,12 @@ function saveToFirebase(){
     // Save transport separately - students as OBJECT (not array) to avoid Firebase 40-limit
     const healedStus = healStudentSubjects(transport.students);
     const stusAsObj = {};
-    healedStus.forEach(function(s){ if(s&&s.id) stusAsObj[s.id]=s; });
+    healedStus.forEach(function(s,idx){
+      if(!s) return;
+      var safeId = s.id ? String(s.id).replace(/[.#$\[\]/]/g,'_') : 'stu_'+idx;
+      if(/^\d+$/.test(safeId)) safeId = 'stu_'+safeId;
+      stusAsObj[safeId] = Object.assign({},s,{id:safeId});
+    });
     const cleanTransport = JSON.parse(JSON.stringify({
       routes: transport.routes,
       students: stusAsObj,
@@ -3248,7 +3253,7 @@ function addStudent(){
   const phone1=document.getElementById('tr-phone1')?document.getElementById('tr-phone1').value.trim():'';
   const phone2=document.getElementById('tr-phone2')?document.getElementById('tr-phone2').value.trim():'';
   const travelTime=document.getElementById('tr-traveltime')?parseInt(document.getElementById('tr-traveltime').value)||0:0;
-  transport.students.push({name,batch,route,pickup,subjects,centre,phone1,phone2,travelTime:travelTime||0,id:'s'+Date.now()});
+  transport.students.push({name,batch,route,pickup,subjects,centre,phone1,phone2,travelTime:travelTime||0,id:'s'+Date.now().toString().replace('.','_')});
   document.getElementById('tr-student').value='';
   saveTransportNow(); // Save transport immediately - don't debounce
   renderDriverSchedule();
@@ -3928,18 +3933,22 @@ let _autoSaveTimer = null;
 function fixAllStudents(){
   if(!confirm('Yeh saare '+transport.students.length+' students ko Firebase mein dobara save karega.\nYeh 1-39 wale students ka data bhi fix karega.\nContinue?')) return;
   
-  // Ensure ALL students have proper string IDs (not numeric)
+  // Sanitize ALL student IDs - remove dots and invalid chars
   var fixed = 0;
+  function sanitizeStuId(id, idx){
+    if(!id) return 'stu_'+Date.now()+'_'+idx;
+    // Replace dots and invalid Firebase key chars
+    var clean = String(id).replace(/[.#$\[\]/]/g,'_');
+    // If numeric only, add prefix
+    if(/^\d+$/.test(clean)) clean = 'stu_'+clean;
+    return clean;
+  }
+  
   transport.students = transport.students.map(function(s, idx){
     if(!s) return null;
-    // If id is numeric or missing, generate new proper id
-    var id = s.id ? String(s.id) : null;
-    if(!id || /^\d+$/.test(id)) {
-      // Numeric id - give proper string id
-      id = 'sfixed_' + Date.now() + '_' + idx;
-      fixed++;
-    }
-    return Object.assign({}, s, {id: id});
+    var newId = sanitizeStuId(s.id, idx);
+    if(newId !== s.id) fixed++;
+    return Object.assign({}, s, {id: newId});
   }).filter(Boolean);
   
   var stusObj = {};
