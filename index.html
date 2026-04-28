@@ -1381,12 +1381,12 @@ function loadFromFirebase(){
           if(tData&&tData.students&&tData.students.length){
             transport={
               routes: tData.routes||[],
-              students: healStudentSubjects(tData.students.map(fixBatch))
+              students: healStudentSubjects(normalizeStudents(tData.students).map(fixBatch))
             };
           } else if(data.transport&&data.transport.students&&data.transport.students.length){
             transport={
               routes: data.transport.routes||[],
-              students: healStudentSubjects(data.transport.students.map(fixBatch))
+              students: healStudentSubjects(normalizeStudents(data.transport.students).map(fixBatch))
             };
           }
           renderAll();
@@ -1395,7 +1395,7 @@ function loadFromFirebase(){
             const vB=BATCHES.map(b=>b.name);
             transport={
               routes:data.transport.routes||[],
-              students:data.transport.students.map(s=>{
+              students:normalizeStudents(data.transport.students).map(s=>{
                 if(!s.batch||vB.includes(s.batch)) return s;
                 const m=vB.find(b=>b.toLowerCase()===s.batch.toLowerCase());
                 return m?{...s,batch:m}:s;
@@ -1497,6 +1497,12 @@ function getAllBatches(){
 // ═══ GOD-LEVEL SUBJECT HEALER ═══
 // Called every time transport data comes from Firebase
 // Ensures student subjects are ALWAYS correct based on batch
+function normalizeStudents(raw){
+  if(!raw) return [];
+  if(Array.isArray(raw)) return raw.filter(Boolean);
+  return Object.values(raw).filter(Boolean);
+}
+
 function healStudentSubjects(students) {
   return students.map(s => {
     const bi = getAllBatches().find(b => b.name === s.batch);
