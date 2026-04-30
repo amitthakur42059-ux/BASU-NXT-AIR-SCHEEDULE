@@ -404,8 +404,6 @@ input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
       <button class="sync-btn sync-btn-save" onclick="saveToFirebase()">↑ Save</button>
       <button class="sync-btn sync-btn-load" onclick="loadFromFirebase()">↓ Load</button>
       <button class="sync-btn sync-btn-live" onclick="startLiveSync()">🔄 Live Sync</button>
-      <button class="sync-btn" onclick="publishAndNotify()" style="background:rgba(99,102,241,.25);color:#a5b4fc;border:1px solid rgba(99,102,241,.4);grid-column:span 2">📢 Publish & Notify</button>
-      <button class="sync-btn" onclick="openWeekTemplateModal()" style="background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3);grid-column:span 2">📋 Week Template</button>
     </div>
   </div>
 
@@ -790,7 +788,6 @@ input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
         <button class="btn btn-warn btn-sm" onclick="fixAllStudents()" title="Fix Firebase array issue for all students">🔧 Fix All Students</button>
         <input type="file" id="csv-upload" accept=".csv,.tsv,.txt" style="display:none" onchange="bulkUploadStudents(event)"/>
         <button class="btn btn-ghost btn-sm" onclick="downloadCSVTemplate()">📄 Template</button>
-        <button class="btn btn-outline btn-sm" onclick="openWeekTemplateModal()" style="background:#ede9fe;color:#5b21b6;border-color:#8b5cf6">📋 Week Template</button>
         <button class="btn btn-pri btn-sm" onclick="openDriverForm(-1)">+ Route</button>
       </div>
     </div>
@@ -3707,33 +3704,7 @@ function downloadPDF(type, range='weekly', day='Mon', trType='day'){
 
   win.document.write(`<!DOCTYPE html><html><head><title>BASU — ${type}</title>${style}</head>
     <body>${hdr}<div class="body">${content}</div>${ftr}
-    <script>setTimeout(()=>window.print(),600);<\/script>
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px">
-  <div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-size:.95rem;font-weight:700">📋 Weekly Template</div>
-      <button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:1rem">&#215;</button>
-    </div>
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">
-      💡 Current week ka schedule template mein save karo — kisi bhi week mein 1 click apply karo!
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input id="wt-name" placeholder="Template naam daalo..." style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none;font-family:inherit"/>
-      <button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:.78rem">&#128190; Save</button>
-    </div>
-    <div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div>
-    <div id="wtTemplatesList" style="min-height:50px"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button>
-      <button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">&#10003; Apply to Current Week</button>
-    </div>
-  </div>
-</div>
-
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px"><div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:.95rem;font-weight:700">&#128203; Weekly Template</div><button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px">&#215;</button></div><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">Current week ka schedule template mein save karo!</div><div style="display:flex;gap:8px;margin-bottom:14px"><input id="wt-name" placeholder="Template naam..." style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none"/><button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Save</button></div><div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div><div id="wtTemplatesList" style="min-height:50px"></div><div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button><button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Apply</button></div></div></div>
-</body></html>`);
+    <script>setTimeout(()=>window.print(),600);<\/script></body></html>`);
   win.document.close();
 }
 
@@ -6844,33 +6815,7 @@ function generateSlips(){
     html += '</div>';
   });
 
-  html += '
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px">
-  <div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-size:.95rem;font-weight:700">📋 Weekly Template</div>
-      <button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:1rem">&#215;</button>
-    </div>
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">
-      💡 Current week ka schedule template mein save karo — kisi bhi week mein 1 click apply karo!
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input id="wt-name" placeholder="Template naam daalo..." style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none;font-family:inherit"/>
-      <button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:.78rem">&#128190; Save</button>
-    </div>
-    <div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div>
-    <div id="wtTemplatesList" style="min-height:50px"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button>
-      <button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">&#10003; Apply to Current Week</button>
-    </div>
-  </div>
-</div>
-
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px"><div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:.95rem;font-weight:700">&#128203; Weekly Template</div><button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px">&#215;</button></div><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">Current week ka schedule template mein save karo!</div><div style="display:flex;gap:8px;margin-bottom:14px"><input id="wt-name" placeholder="Template naam..." style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none"/><button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Save</button></div><div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div><div id="wtTemplatesList" style="min-height:50px"></div><div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button><button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Apply</button></div></div></div>
-</body></html>';
+  html += '</body></html>';
   var win = window.open('','_blank');
   win.document.write(html);
   win.document.close();
@@ -6932,33 +6877,7 @@ function generateRouteSheet(stus, days, getTravT, toMi, frMi, getStuSlotsDay){
     html += '</tbody></table></div>';
   });
 
-  html += '
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px">
-  <div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-size:.95rem;font-weight:700">📋 Weekly Template</div>
-      <button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:1rem">&#215;</button>
-    </div>
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">
-      💡 Current week ka schedule template mein save karo — kisi bhi week mein 1 click apply karo!
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input id="wt-name" placeholder="Template naam daalo..." style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none;font-family:inherit"/>
-      <button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:.78rem">&#128190; Save</button>
-    </div>
-    <div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div>
-    <div id="wtTemplatesList" style="min-height:50px"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button>
-      <button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">&#10003; Apply to Current Week</button>
-    </div>
-  </div>
-</div>
-
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px"><div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:.95rem;font-weight:700">&#128203; Weekly Template</div><button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px">&#215;</button></div><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">Current week ka schedule template mein save karo!</div><div style="display:flex;gap:8px;margin-bottom:14px"><input id="wt-name" placeholder="Template naam..." style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none"/><button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Save</button></div><div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div><div id="wtTemplatesList" style="min-height:50px"></div><div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button><button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Apply</button></div></div></div>
-</body></html>';
+  html += '</body></html>';
   var win = window.open('','_blank');
   win.document.write(html);
   win.document.close();
@@ -7125,33 +7044,7 @@ function generateDriverSheet(routeName, days){
     html += '</div>'; // day-section
   });
 
-  html += '
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px">
-  <div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-size:.95rem;font-weight:700">📋 Weekly Template</div>
-      <button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:1rem">&#215;</button>
-    </div>
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">
-      💡 Current week ka schedule template mein save karo — kisi bhi week mein 1 click apply karo!
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input id="wt-name" placeholder="Template naam daalo..." style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none;font-family:inherit"/>
-      <button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:.78rem">&#128190; Save</button>
-    </div>
-    <div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div>
-    <div id="wtTemplatesList" style="min-height:50px"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button>
-      <button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">&#10003; Apply to Current Week</button>
-    </div>
-  </div>
-</div>
-
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px"><div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:.95rem;font-weight:700">&#128203; Weekly Template</div><button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px">&#215;</button></div><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">Current week ka schedule template mein save karo!</div><div style="display:flex;gap:8px;margin-bottom:14px"><input id="wt-name" placeholder="Template naam..." style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none"/><button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Save</button></div><div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div><div id="wtTemplatesList" style="min-height:50px"></div><div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button><button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Apply</button></div></div></div>
-</body></html>';
+  html += '</body></html>';
   var win=window.open('','_blank');
   win.document.write(html);
   win.document.close();
@@ -7242,33 +7135,7 @@ function generateStudentCards(routeName, days){
     html+='</div>';
   });
 
-  html+='
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px">
-  <div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-size:.95rem;font-weight:700">📋 Weekly Template</div>
-      <button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:1rem">&#215;</button>
-    </div>
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">
-      💡 Current week ka schedule template mein save karo — kisi bhi week mein 1 click apply karo!
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input id="wt-name" placeholder="Template naam daalo..." style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none;font-family:inherit"/>
-      <button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:.78rem">&#128190; Save</button>
-    </div>
-    <div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div>
-    <div id="wtTemplatesList" style="min-height:50px"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button>
-      <button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">&#10003; Apply to Current Week</button>
-    </div>
-  </div>
-</div>
-
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px"><div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:.95rem;font-weight:700">&#128203; Weekly Template</div><button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px">&#215;</button></div><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">Current week ka schedule template mein save karo!</div><div style="display:flex;gap:8px;margin-bottom:14px"><input id="wt-name" placeholder="Template naam..." style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none"/><button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Save</button></div><div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div><div id="wtTemplatesList" style="min-height:50px"></div><div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button><button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Apply</button></div></div></div>
-</body></html>';
+  html+='</body></html>';
   var win=window.open('','_blank');
   win.document.write(html);
   win.document.close();
@@ -7320,102 +7187,7 @@ function chApplyRange(){
   renderClassHistory();
 }
 
-
-// === WEEKLY TEMPLATE SYSTEM ===
-window._wt = window._wt || [];
-var _wti = -1;
-function openWeekTemplateModal(){
-  _wti=-1;
-  document.getElementById('wt-apply-btn').style.display='none';
-  _wtRender();
-  document.getElementById('weekTemplateModal').style.display='flex';
-}
-function closeWeekTemplateModal(){
-  document.getElementById('weekTemplateModal').style.display='none';
-}
-function saveCurrentAsTemplate(){
-  var name=document.getElementById('wt-name').value.trim();
-  if(!name){alert('Template naam daalo!');return;}
-  var total=Object.values(slots).reduce(function(a,b){return a+b.length;},0);
-  if(total===0){alert('Koi class nahi hai!');return;}
-  window._wt=window._wt||[];
-  window._wt.unshift({id:'wt'+Date.now(),name:name,date:new Date().toISOString(),count:total,slots:JSON.parse(JSON.stringify(slots))});
-  if(window._wt.length>10)window._wt=window._wt.slice(0,10);
-  document.getElementById('wt-name').value='';
-  _wtRender();
-  if(typeof debouncedSave==='function')debouncedSave();
-  showSyncStatus('✅ Template saved: '+name,'#166534');
-}
-function _wtRender(){
-  var el=document.getElementById('wtTemplatesList');
-  if(!el)return;
-  var ts=window._wt||[];
-  if(!ts.length){el.innerHTML='<div style="text-align:center;padding:16px;color:#94a3b8;font-size:.78rem">No templates yet.</div>';return;}
-  el.innerHTML=ts.map(function(t,i){
-    var sel=(_wti===i);
-    return '<div onclick="_wtSel('+i+')" style="padding:10px 12px;background:'+(sel?'#ede9fe':'#f8fafc')+';border:1.5px solid '+(sel?'#8b5cf6':'#e2e8f0')+';border-radius:9px;margin-bottom:6px;cursor:pointer">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center">'
-      +'<div><div style="font-weight:700;font-size:.82rem">'+t.name+'</div>'
-      +'<div style="font-size:.68rem;color:#94a3b8">'+new Date(t.date).toLocaleDateString('en-IN')+' · '+t.count+' classes</div></div>'
-      +'<button onclick="event.stopPropagation();_wtDel('+i+')" style="padding:3px 8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;font-size:.65rem;color:#dc2626">Del</button>'
-      +'</div></div>';
-  }).join('');
-}
-function _wtSel(i){_wti=i;document.getElementById('wt-apply-btn').style.display='inline-flex';_wtRender();}
-function _wtDel(i){if(!confirm('Delete?'))return;window._wt.splice(i,1);if(_wti===i)_wti=-1;_wtRender();}
-function applySelectedTemplate(){
-  if(_wti<0){alert('Pehle template select karo!');return;}
-  var t=window._wt[_wti];
-  var merge=confirm('Template "'+t.name+'" apply karo?\n\nOK = Sirf empty days fill karo\nCancel = Full replace');
-  Object.entries(t.slots).forEach(function(entry){
-    var key=entry[0],val=entry[1];
-    if(merge){if(!slots[key]||slots[key].length===0)slots[key]=JSON.parse(JSON.stringify(val));}
-    else slots[key]=JSON.parse(JSON.stringify(val));
-  });
-  closeWeekTemplateModal();
-  if(typeof renderAll==='function')renderAll();
-  if(typeof debouncedSave==='function')debouncedSave();
-  showSyncStatus('✅ Template applied!','#166534');
-}
-
-
-// === WEEKLY TEMPLATE SYSTEM ===
-window._wt=window._wt||[];var _wti=-1;
-function openWeekTemplateModal(){_wti=-1;document.getElementById('wt-apply-btn').style.display='none';_wtRender();document.getElementById('weekTemplateModal').style.display='flex';}
-function closeWeekTemplateModal(){document.getElementById('weekTemplateModal').style.display='none';}
-function saveCurrentAsTemplate(){var name=document.getElementById('wt-name').value.trim();if(!name){alert('Naam daalo!');return;}var total=Object.values(slots).reduce(function(a,b){return a+b.length;},0);if(total===0){alert('Classes nahi hain!');return;}window._wt=window._wt||[];window._wt.unshift({id:'wt'+Date.now(),name:name,date:new Date().toISOString(),count:total,slots:JSON.parse(JSON.stringify(slots))});if(window._wt.length>10)window._wt=window._wt.slice(0,10);document.getElementById('wt-name').value='';_wtRender();if(typeof debouncedSave==='function')debouncedSave();showSyncStatus('Template saved!','#166534');}
-function _wtRender(){var el=document.getElementById('wtTemplatesList');if(!el)return;var ts=window._wt||[];if(!ts.length){el.innerHTML='<div style="text-align:center;padding:16px;color:#94a3b8">No templates yet.</div>';return;}el.innerHTML=ts.map(function(t,i){var s=(_wti===i);return'<div onclick="_wtSel('+i+')" style="padding:10px;background:'+(s?'#ede9fe':'#f8fafc')+';border:1.5px solid '+(s?'#8b5cf6':'#e2e8f0')+';border-radius:9px;margin-bottom:6px;cursor:pointer"><div style="display:flex;justify-content:space-between"><div><b style="font-size:.82rem">'+t.name+'</b><div style="font-size:.68rem;color:#94a3b8">'+new Date(t.date).toLocaleDateString('en-IN')+' - '+t.count+' classes</div></div><button onclick="event.stopPropagation();_wtDel('+i+')" style="padding:2px 7px;background:#fee2e2;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;font-size:.65rem;color:#dc2626">Del</button></div></div>';}).join('');}
-function _wtSel(i){_wti=i;document.getElementById('wt-apply-btn').style.display='inline-flex';_wtRender();}
-function _wtDel(i){if(!confirm('Delete?'))return;window._wt.splice(i,1);if(_wti===i)_wti=-1;_wtRender();}
-function applySelectedTemplate(){if(_wti<0){alert('Select karo!');return;}var t=window._wt[_wti];var m=confirm('OK=Empty days fill
-Cancel=Full replace');Object.entries(t.slots).forEach(function(e){if(m){if(!slots[e[0]]||!slots[e[0]].length)slots[e[0]]=JSON.parse(JSON.stringify(e[1]));}else slots[e[0]]=JSON.parse(JSON.stringify(e[1]));});closeWeekTemplateModal();if(typeof renderAll==='function')renderAll();if(typeof debouncedSave==='function')debouncedSave();showSyncStatus('Template applied!','#166534');}
 </script>
 </div><!-- end .main -->
-
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px">
-  <div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-size:.95rem;font-weight:700">📋 Weekly Template</div>
-      <button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:1rem">&#215;</button>
-    </div>
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">
-      💡 Current week ka schedule template mein save karo — kisi bhi week mein 1 click apply karo!
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input id="wt-name" placeholder="Template naam daalo..." style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none;font-family:inherit"/>
-      <button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:.78rem">&#128190; Save</button>
-    </div>
-    <div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div>
-    <div id="wtTemplatesList" style="min-height:50px"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button>
-      <button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">&#10003; Apply to Current Week</button>
-    </div>
-  </div>
-</div>
-
-<!-- WEEKLY TEMPLATE MODAL -->
-<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px"><div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:.95rem;font-weight:700">&#128203; Weekly Template</div><button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;cursor:pointer;width:26px;height:26px;border-radius:6px">&#215;</button></div><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:.75rem;color:#1e40af;margin-bottom:12px">Current week ka schedule template mein save karo!</div><div style="display:flex;gap:8px;margin-bottom:14px"><input id="wt-name" placeholder="Template naam..." style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none"/><button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Save</button></div><div style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Saved Templates</div><div id="wtTemplatesList" style="min-height:50px"></div><div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end"><button onclick="closeWeekTemplateModal()" style="padding:7px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;background:transparent">Cancel</button><button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Apply</button></div></div></div>
 </body>
 </html>
