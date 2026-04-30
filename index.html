@@ -419,7 +419,7 @@ input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
     <button onclick="goPage('rooms',this)"><span class="nav-icon">🚪</span>Rooms</button>
     <button onclick="goPage('free',this)"><span class="nav-icon">🟢</span>Availability</button>
     <button onclick="goPage('conflicts',this)"><span class="nav-icon">⚠️</span>Conflicts</button>
-    <button onclick="goPage('transport',this)"><span class="nav-icon">🚌</span>Transport</button>
+    <!-- Transport moved to Transport Manager portal -->
     <button onclick="goPage('class-history',this)"><span class="nav-icon">📊</span>Class History</button>
   </div>
 
@@ -454,6 +454,7 @@ input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
 
 <!-- ═══ DASHBOARD ═══ -->
 <div id="page-dashboard" class="page on">
+<div style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.82rem;display:flex;align-items:center;justify-content:space-between"><span>🚌 Transport management moved to separate portal</span><a href="https://basu-nxt-air-schedule.web.app/transport-manager.html" target="_blank" style="background:#7c3aed;color:#fff;padding:5px 12px;border-radius:7px;font-weight:700;text-decoration:none;font-size:.78rem">Open Transport Manager →</a></div>
   <div class="stat-grid" id="stat-grid"></div>
 
 
@@ -1271,6 +1272,24 @@ function loadFirebaseSDK(){
 
 // Save to Firebase
 function saveToFirebase(){
+  // GUARD: Don't wipe transport data if students array is suspiciously empty
+  if(transport && transport.students && transport.students.length > 0 && transport.students.length < 10){
+    if(!confirm('⚠️ Sirf '+transport.students.length+' students hain Firebase mein — Save karna chahte hain? Nahi karo agar data missing lag raha hai.')){
+      showSyncStatus('❌ Save cancelled!', '#dc2626');
+      return;
+    }
+  }
+  // GUARD: Never save if transport.students is empty but Firebase has data
+  if(!transport || !transport.students || transport.students.length === 0){
+    showSyncStatus('⚠️ Transport save skip — students empty!', '#d97706');
+    // Only save schedule, not transport
+    loadFirebaseSDK().then(()=>{
+      const cleanData = {slots, teachers, rooms, updatedAt: Date.now()};
+      db.ref('schedule').set(JSON.parse(JSON.stringify(cleanData)))
+        .then(()=>showSyncStatus('✅ Schedule saved (transport skipped)', '#166534'));
+    });
+    return;
+  }
   showSyncStatus('⏳ Connecting to Firebase...', '#1e40af');
   loadFirebaseSDK().then(()=>{
     // Clean data - remove undefined/functions
