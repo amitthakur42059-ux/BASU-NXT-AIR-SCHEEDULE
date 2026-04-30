@@ -788,6 +788,7 @@ input:hover:not(:focus),select:hover:not(:focus){border-color:var(--border-d)}
         <button class="btn btn-warn btn-sm" onclick="fixAllStudents()" title="Fix Firebase array issue for all students">🔧 Fix All Students</button>
         <input type="file" id="csv-upload" accept=".csv,.tsv,.txt" style="display:none" onchange="bulkUploadStudents(event)"/>
         <button class="btn btn-ghost btn-sm" onclick="downloadCSVTemplate()">📄 Template</button>
+        <button class="btn btn-outline btn-sm" onclick="openWeekTemplateModal()" style="background:#ede9fe;color:#5b21b6;border-color:#8b5cf6">📋 Apply Week Template</button>
         <button class="btn btn-pri btn-sm" onclick="openDriverForm(-1)">+ Route</button>
       </div>
     </div>
@@ -3704,7 +3705,34 @@ function downloadPDF(type, range='weekly', day='Mon', trType='day'){
 
   win.document.write(`<!DOCTYPE html><html><head><title>BASU — ${type}</title>${style}</head>
     <body>${hdr}<div class="body">${content}</div>${ftr}
-    <script>setTimeout(()=>window.print(),600);<\/script></body></html>`);
+    <script>setTimeout(()=>window.print(),600);<\/script>
+<!-- WEEK TEMPLATE MODAL -->
+<div id="weekTemplateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.25)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:.95rem;font-weight:700">📋 Weekly Template</div>
+      <button onclick="closeWeekTemplateModal()" style="background:#f1f5f9;border:none;font-size:1rem;cursor:pointer;color:#64748b;width:28px;height:28px;border-radius:7px">×</button>
+    </div>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:10px 14px;font-size:.75rem;color:#1e40af;margin-bottom:14px">
+      ℹ️ Current week ka schedule template ke roop mein save karo — phir kisi bhi week mein 1 click mein apply karo!
+    </div>
+    
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input id="wt-name" placeholder="Template naam daalo..." style="flex:1;padding:8px 11px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;outline:none"/>
+      <button onclick="saveCurrentAsTemplate()" style="padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700">💾 Save</button>
+    </div>
+    
+    <div style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Saved Templates</div>
+    <div id="wtTemplatesList"></div>
+    
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeWeekTemplateModal()" style="padding:8px 14px;background:transparent;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:.78rem">Cancel</button>
+      <button onclick="applySelectedTemplate()" id="wt-apply-btn" style="display:none;padding:8px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700">✅ Apply to Current Week</button>
+    </div>
+  </div>
+</div>
+
+</body></html>`);
   win.document.close();
 }
 
